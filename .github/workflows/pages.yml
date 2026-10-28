@@ -1,0 +1,39 @@
+name: Publier Miam Maman
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: miam-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Vérifier les règles du stock et les accès
+        run: npm test
+      - name: Construire l’accès au stock partagé
+        env:
+          MIAM_REQUIRE_SHARED_BACKEND: '1'
+          MIAM_GOOGLE_WEBAPP_URL: ${{ vars.MIAM_GOOGLE_WEBAPP_URL }}
+        run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publier
+        id: deployment
+        uses: actions/deploy-pages@v4
