@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff8ec"><meta name="description" content="Les bons petits plats de Maman : les retrouver, partager les portions et savoir quand il en reste peu.">
+  <title>Miam Maman !</title>
+  <!--__PWA_HEAD__-->
+  <style>/*__STYLE__*/</style>
+</head>
+<body>
+  <div id="modeBanner" class="mode-banner" hidden>Aperçu privé · Le stock reste sur cet appareil. Le partage Google Sheets est à activer.</div>
+  <header class="topbar"><a class="brand" href="#" aria-label="Miam Maman, accueil"><img src="__MASCOT__" alt="" class="brand-mascot"><span>Miam Maman<span class="brand-bang"> !</span></span></a><button id="profileButton" class="profile" hidden></button></header>
+  <div style="text-align:center;padding:8px"><button id="installApp" class="quiet" type="button">Installer sur mon téléphone</button></div>
+  <main id="app" tabindex="-1"></main>
+  <footer class="desktop-footer">Cuisiné avec amour. Partagé en famille. <span aria-hidden="true">♡</span></footer>
+  <nav id="navigation" class="bottom-nav" aria-label="Navigation principale" hidden>
+    <button data-page="stock" class="active"><span data-icon="pot"></span>Mes plats</button>
+    <button data-page="history"><span data-icon="clock"></span>Historique</button>
+    <button data-page="settings"><span data-icon="settings"></span>La maison</button>
+  </nav>
+  <dialog id="modal" aria-labelledby="modalTitle"><div class="modal-top"><h2 id="modalTitle"></h2><button id="closeModal" class="icon-button" aria-label="Fermer">×</button></div><div id="modalBody"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script>/*__CORE__*/</script><script>/*__APP__*/</script>
+</body>
+</html>
