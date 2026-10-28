@@ -17,3 +17,18 @@ test('an accidental take can be undone exactly once',()=>{let s=fixture();s=perf
 test('invalid quantities, missing storage and invalid dates are rejected',()=>{const s=fixture(),base={name:'Soupe',locationId:'loc',quantity:1,threshold:0,preparedAt:'2026-10-27'};for(const quantity of [-1,0,1.2,NaN,1000,'2'])assert.throws(()=>c.command(s,'maman','meal.add',{...base,quantity},'m'+quantity,now));assert.throws(()=>c.command(s,'maman','meal.add',{...base,locationId:'missing'},'no-loc',now),/emplacement/);assert.throws(()=>c.command(s,'maman','meal.add',{...base,preparedAt:'2026-02-31'},'date',now),/date/);});
 test('duplicate location names ignore case and accents',()=>{const s=perform(c.empty(),'maman','location.add',{name:'Étage'},'one');assert.throws(()=>c.command(s,'maman','location.add',{name:'etage'},'two',now),/existe déjà/);});
 test('voice extracts French quantities and matches only user-created locations',()=>{const r=c.parseVoice('Six portions de lasagnes dans Notre emplacement',[{id:'abc',name:'Notre emplacement'}]);assert.equal(r.quantity,6);assert.equal(r.name,'lasagnes');assert.equal(r.locationId,'abc');const r2=c.parseVoice('2 portions de soupe dans un autre endroit',[]);assert.equal(r2.quantity,2);assert.equal(r2.locationId,undefined);});
+
+test('every preparation keeps its own editable alert threshold',()=>{
+  let s=fixture();s=perform(s,'maman','meal.add',{name:'Soupe',locationId:'loc',quantity:5,threshold:4,preparedAt:'2026-10-27'},'soup');
+  assert.equal(c.isLow(s.meals[0]),false);assert.equal(c.isLow(s.meals[1]),false);
+  s=perform(s,'famille','meal.take',{id:'soup',quantity:1},'take-soup');assert.equal(c.isLow(s.meals[1]),true);
+  s=perform(s,'maman','meal.edit',{id:'meal',locationId:'loc',threshold:2},'threshold');assert.equal(c.isLow(s.meals[0]),true);
+  assert.equal(s.meals[1].threshold,4);assert.equal(s.meals[0].quantity,2);
+  for(const threshold of [-1,1.5,1000,'2'])assert.throws(()=>c.command(s,'maman','meal.edit',{id:'meal',locationId:'loc',threshold},'bad'+threshold,now));
+  assert.equal(c.isLow({quantity:0,threshold:4}),false);
+});
+test('voice can set a separate alert threshold, including zero',()=>{
+  const r=c.parseVoice('Six portions de lasagnes dans Notre emplacement, alerte à deux portions',[{id:'loc',name:'Notre emplacement'}]);
+  assert.equal(r.quantity,6);assert.equal(r.threshold,2);assert.equal(r.locationId,'loc');assert.equal(r.name,'lasagnes');
+  assert.equal(c.parseVoice("3 portions de soupe stock d'alerte zéro",[]).threshold,0);
+});
