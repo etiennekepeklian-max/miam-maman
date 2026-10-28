@@ -1,6 +1,9 @@
 /* Shared domain rules: browser preview and Google Apps Script. */
 var MiamCore = (function () {
   'use strict';
+  var PROFILES = [{id:'MLK',role:'maman',label:'MLK'},{id:'GK',role:'famille',label:'GK'},{id:'EK',role:'famille',label:'EK'}];
+  function profile(id) { var found=PROFILES.find(function(p){return p.id===id;}); if(!found) fail('Choisissez MLK, GK ou EK.'); return Object.assign({},found); }
+  function isLow(meal) { return meal.quantity>0 && meal.quantity<=meal.threshold; }
   function empty() { return {locations: [], meals: [], events: []}; }
   function fail(message) { throw new Error(message); }
   function text(value, max) {
@@ -27,12 +30,12 @@ var MiamCore = (function () {
     });
     return s;
   }
-  function command(s, role, action, args, id, now) {
+  function command(s, role, action, args, id, now, actor) {
     if (role !== 'maman' && role !== 'famille') fail('Connexion nécessaire.');
     key(id);
     var duplicate = s.events.find(function(e) { return e.id === id; });
     if (duplicate) {
-      if (duplicate.role !== role || duplicate.action !== action || duplicate.request !== JSON.stringify(args)) fail('Cette opération existe déjà avec un contenu différent.');
+      if ((duplicate.profile || null) !== (actor || null) || duplicate.role !== role || duplicate.action !== action || duplicate.request !== JSON.stringify(args)) fail('Cette opération existe déjà avec un contenu différent.');
       return null;
     }
     if (['location.add','location.delete','meal.add','meal.edit'].indexOf(action) >= 0 && role !== 'maman') fail('Seul le compte Maman peut gérer les préparations et les emplacements.');
@@ -68,14 +71,14 @@ var MiamCore = (function () {
       d = {id:meal.id, name:meal.name, locationId:loc.id, locationName:loc.name, detail:String(args.detail || '').trim().slice(0,120), threshold:integer(args.threshold,0,999)};
     } else if (action === 'meal.undo') {
       var taken = s.events.find(function(e) { return e.id === args.eventId && e.action === 'meal.take'; });
-      if (!taken || taken.role !== role || role !== 'famille') fail('Cette prise ne peut pas être annulée avec ce compte.');
+      if (!taken || taken.role !== role || role !== 'famille' || (taken.profile && taken.profile !== actor)) fail('Cette prise ne peut pas être annulée avec ce compte.');
       if (s.events.some(function(e) { return e.action === 'meal.undo' && e.data.eventId === taken.id; })) fail('Cette prise a déjà été annulée.');
       if (new Date(now).getTime()-new Date(taken.at).getTime()>24*3600000) fail('L’annulation est possible pendant 24 heures.');
       var undoMeal = s.meals.find(function(m) { return m.id === taken.data.id; });
       if (!undoMeal || !s.locations.some(function(l) { return l.id === undoMeal.locationId; })) fail('Cet emplacement a été supprimé. Demandez à Maman de replacer ce plat dans un emplacement avant d’annuler.');
       d = {id:taken.data.id, name:taken.data.name, quantity:taken.data.quantity, eventId:taken.id};
     } else fail('Action inconnue.');
-    return {id:id, at:now, action:action, role:role, data:d, request:JSON.stringify(args)};
+    return {id:id, at:now, action:action, role:role, profile:actor||null, data:d, request:JSON.stringify(args)};
   }
   function parseVoice(input, locations) {
     var original = String(input).trim(), normalized = norm(original), result = {};
@@ -84,11 +87,13 @@ var MiamCore = (function () {
     if (match) {
       result.quantity = /^\d+$/.test(match[1]) ? Number(match[1]) : nums[match[1]];
       var start = original.slice(match.index+match[0].length).replace(/^\s*(?:de |d[’'])/i,'');
-      result.name = start.split(/\s+(?:dans|au|aux|a la|à la|a l[’']|à l[’']|sur|seuil|alerte)\s+/i)[0].replace(/[,.;]+$/,'').trim();
+      result.name = start.split(/\s+(?:dans|au|aux|a la|à la|a l[’']|à l[’']|sur|stock d[’']alerte|seuil|alerte)\s+/i)[0].replace(/[,.;]+$/,'').trim();
     }
+    var alert = normalized.match(/(?:stock d[’']alerte|seuil(?: d[’']alerte)?|alerte)\s*(?:a|de|:)?\s*(\d+|zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt)\b/);
+    if(alert) result.threshold = /^\d+$/.test(alert[1]) ? Number(alert[1]) : alert[1]==='zero'?0:nums[alert[1]];
     var candidates = locations.filter(function(l) { return normalized.indexOf(norm(l.name))>=0; }).sort(function(a,b) { return b.name.length-a.name.length; });
     if (candidates[0]) result.locationId = candidates[0].id;
     return result;
   }
-  return {empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
+  return {profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
 })();
