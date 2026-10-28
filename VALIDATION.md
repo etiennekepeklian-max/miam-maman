@@ -1,10 +1,6 @@
-# Validation de la préparation — 28 octobre 2026
+# Validation — profils sans mot de passe
 
-- `npm test` : 14 tests réussis, aucun échec.
-- Build de production sans URL Google : refus attendu.
-- Build avec une URL hors script.google.com : refus attendu.
-- Build avec une URL Google /exec de test local : lanceur généré, aucun adaptateur de stock local dans la page Pages ; URL absente du client Google.
-- Build sans configuration : aperçu local distinct, sans URL de test résiduelle.
-- Dernier build livré : aperçu local explicitement signalé. Le workflow ne publiera qu’avec une URL Google renseignée.
-- Aucune connexion réelle Google, écriture Sheets, synchronisation familiale, publication GitHub ou installation téléphone validée dans cette session.
-- Aucun paramètre externe modifié.
+- 18 tests passent : profils MLK/GK/EK, règles de stock, historique par profil, annulation par le profil concerné, seuils individuels, dictée du seuil, écritures idempotentes et sessions temporaires.
+- Build de publication réussi avec l’URL Google existante.
+- Aucun emplacement ni plat n’est prérempli dans les données réelles.
+- La vérification du déploiement et de l’accès sans compte Google doit être achevée après sa mise à jour et l’approbation du propriétaire pour l’accès public.

@@ -1,25 +1,16 @@
-# Publication de Miam Maman
+# Publication et activation
 
-Le dépôt public `etiennekepeklian-max/miam-maman` a été recréé le 28 octobre 2026. Il contient les sources, les tests, les fichiers Google Apps Script et le workflow GitHub Pages.
+Le dépôt public contient l’intégralité des sources, la distribution, les tests et le workflow GitHub Pages. La version 2 utilise trois profils sans mot de passe : MLK, GK et EK.
 
-## Architecture
+## Mettre à jour
 
-GitHub Pages héberge une page d’entrée installable sur téléphone. Son bouton ouvre l’application exécutée par Google Apps Script, qui écrit dans le Google Sheet. Les écritures partagées nécessitent Internet. L’icône installée ouvre la page d’entrée, puis le bouton ouvre le stock Google.
+1. Exécuter les tests et le build avec la variable `MIAM_GOOGLE_WEBAPP_URL` du déploiement existant.
+2. Mettre à jour les fichiers `Code.gs`, `Core.gs`, `Index.html` et `appsscript.json` du projet Google lié au classeur familial.
+3. Modifier le déploiement Google existant, choisir **Nouvelle version**, puis déployer. Conserver son URL `/exec` et son exécution par le propriétaire.
+4. L’accès Google conservé est initialement **Moi uniquement**. Avant le passage à **Tout le monde**, obtenir l’accord explicite du propriétaire : toute personne disposant du lien pourra choisir un profil, lire et modifier le stock selon ce profil. Aucun mot de passe ne protège les profils.
+5. Envoyer les sources sur GitHub. Le workflow utilise `MIAM_GOOGLE_WEBAPP_URL` et publie la page d’entrée sur GitHub Pages.
+6. Vérifier les trois profils et les seuils d’alerte. Ne créer aucun emplacement réel à la place de la famille.
 
-Sans URL Google, `npm run build` produit un aperçu local explicitement signalé. Le workflow de publication exige l’URL et refuse de publier cet aperçu comme un stock partagé.
+## État des données
 
-## Activation restante
-
-1. Ouvrir le classeur familial indiqué dans le README, puis **Extensions → Apps Script** pour retrouver le projet lié.
-2. Vérifier les quatre fichiers de `google-apps-script/` et enregistrer. Le propriétaire examine et approuve les autorisations Google nécessaires.
-3. Recharger le classeur et choisir **Miam Maman ! → Configurer les deux comptes**. Choisir deux codes différents d’au moins six caractères. Ne jamais les mettre dans le dépôt.
-4. Déployer une **Application Web**, exécutée par le propriétaire. Le manifeste conservé limite actuellement l’entrée à ce propriétaire (`MYSELF`). L’accès de la famille doit être configuré avec l’accord explicite du propriétaire ; le serveur vérifie ensuite les deux comptes pour toutes les données.
-5. Copier l’URL définitive terminée par `/exec`, puis vérifier la connexion et une vraie écriture/lecture dans le classeur. Aucun emplacement n’est créé par défaut.
-6. Dans le dépôt GitHub, **Settings → Secrets and variables → Actions → Variables**, créer `MIAM_GOOGLE_WEBAPP_URL` avec cette URL. Ne pas y mettre de code d’accès.
-7. Dans **Settings → Pages**, choisir **GitHub Actions** comme source.
-8. Lancer **Actions → Publier Miam Maman → Run workflow**. Les mises à jour de `main` relanceront ensuite le déploiement.
-9. Vérifier le succès du workflow, ouvrir l’URL Pages retournée et toucher **Ouvrir le stock familial**. Tester depuis deux appareils avant de déclarer la synchronisation opérationnelle.
-
-## Validation
-
-Les 14 tests locaux passent. Ils vérifient les droits, les quantités, les emplacements, l’annulation, les sessions et les doubles envois. La publication GitHub du code ne suffit pas à activer les autorisations Google ni le partage familial.
+Le journal existant est conservé. Les nouvelles opérations indiquent MLK, GK ou EK. Les anciens événements sans profil restent lisibles. L’onglet Comptes est actualisé avec les trois noms à la première sélection d’un profil. Il ne contient aucun mot de passe.

@@ -1,19 +1,10 @@
-# Installer Miam Maman ! sur téléphone
+# Installer Miam Maman sur le téléphone
 
-L’application est préparée comme une PWA : une application web qui s’ouvre depuis une icône sur le téléphone.
+1. Ouvrir https://etiennekepeklian-max.github.io/miam-maman/ sur le téléphone.
+2. Appuyer sur **Installer Miam Maman sur mon téléphone**.
+3. Sur Android, utiliser Chrome puis **⋮ → Ajouter à l’écran d’accueil → Installer** si aucune fenêtre automatique n’apparaît. Sur iPhone, utiliser Safari puis **Partager → Sur l’écran d’accueil → Ajouter**.
+4. Ouvrir l’icône Miam Maman, toucher **Ouvrir le stock familial**, puis choisir **MLK**, **GK** ou **EK**. Le dernier profil choisi est mémorisé sur cet appareil. Aucun mot de passe n’est demandé lorsque l’accès Google pour tous les visiteurs est activé.
 
-## Android
+MLK ajoute les plats, crée les emplacements et fixe le **stock d’alerte** de chaque préparation. GK et EK indiquent les portions qu’ils prennent. Utiliser le bouton **⋯** d’un plat depuis MLK pour modifier son seuil d’alerte ou son emplacement.
 
-Ouvrir le lien de l’application dans Chrome. Choisir le menu **⋮ → Ajouter à l’écran d’accueil → Installer**. Le bouton **Installer sur mon téléphone** ouvre la proposition d’installation lorsque Chrome la rend disponible.
-
-## iPhone
-
-Ouvrir le lien dans Safari. Choisir **Partager → Sur l’écran d’accueil**, puis **Ajouter**.
-
-## Stock familial
-
-L’installation ne suffit pas à activer le partage des portions. Tant que la bannière d’aperçu est affichée, les essais restent sur chaque appareil. Le Google Sheet est créé mais son service Apps Script doit encore être déployé et les accès Maman et Famille configurés par le propriétaire.
-
-La page GitHub Pages ouvre le stock Google depuis son bouton **Ouvrir le stock familial**. Utiliser ce lien après la configuration des accès et le test de synchronisation entre deux appareils.
-
-La procédure technique et les fichiers Google sont dans README.md et google-apps-script/.
+L’icône est un raccourci vers l’application web. Internet est nécessaire pour retrouver le stock commun. Le lien donne accès aux profils sans authentification : le partager uniquement avec les personnes qui doivent consulter et utiliser le stock.
