@@ -2,13 +2,15 @@
 var SPREADSHEET_ID = '1_yC0fdQKQWo84xmK01QVIOPFqHTZF5Ve0mXycFqk3_A';
 var OWNER_EMAIL = 'etienne.kepeklian@gmail.com';
 var HEADERS = {
-  Stock:['ID préparation','Plat','Portions','Emplacement','Repère','Préparé le','Seuil','État'],
+  Stock:['ID préparation','Plat','Portions','Emplacement','Repère','Préparé le','Seuil','État','Type','Unité'],
   Emplacements:['ID emplacement','Nom'],
   Journal:['Horodatage','ID opération','Action','Compte','ID objet','Nom','Emplacement','Variation portions','Seuil','Préparé le','Repère','Opération annulée','Données événement'],
   Comptes:['Compte','Utilisation'],
   Suggestions:['ID suggestion','Date','Profil','Titre','Suggestion','Lue par EK']
 };
-function doGet() {
+function doGet(e) {
+  if(e && e.parameter && e.parameter.bridge==='1')return bridge_(e.parameter.nonce);
+
   return HtmlService.createHtmlOutputFromFile('Index').setTitle('Miam Maman !').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).addMetaTag('viewport','width=device-width, initial-scale=1');
 }
 function onOpen() {
@@ -24,7 +26,7 @@ function afficherLesProfils() {
 }
 function profilesSheet_() {
   var ss=sheet_();
-  Object.keys(HEADERS).forEach(function(name){var s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(!s.getLastRow())s.appendRow(HEADERS[name]);});
+  Object.keys(HEADERS).forEach(function(name){var s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(!s.getLastRow())s.appendRow(HEADERS[name]);else if(name==='Stock')s.getRange(1,1,1,HEADERS.Stock.length).setValues([HEADERS.Stock]);});
   var rows=[['MLK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions'],['GK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions'],['EK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions']];
   var sh=ss.getSheetByName('Comptes');
   if(JSON.stringify(sh.getRange(2,1,3,2).getValues())!==JSON.stringify(rows)){
@@ -67,7 +69,7 @@ function append_(e) {
 function project_(s) {
   var ss=sheet_();
   function write(name,rows){var sh=ss.getSheetByName(name);var size=HEADERS[name].length;if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,size).clearContent();if(rows.length){if(sh.getMaxRows()<rows.length+1)sh.insertRowsAfter(sh.getMaxRows(),rows.length+1-sh.getMaxRows());sh.getRange(2,1,rows.length,size).setValues(rows);}}
-  write('Stock',s.meals.map(function(m){return [m.id,literal_(m.name),m.quantity,literal_(m.locationName),literal_(m.detail),m.preparedAt,m.threshold,m.quantity===0?'Terminé':m.quantity<=m.threshold?'Bientôt fini':'Disponible'];}));
+  write('Stock',s.meals.map(function(m){return [m.id,literal_(m.name),m.quantity,literal_(m.locationName),literal_(m.detail),m.preparedAt,m.threshold,m.quantity===0?'Terminé':m.quantity<=m.threshold?'Bientôt fini':'Disponible',m.kind==='vegetable'?'Légumes non cuisinés':'Plat préparé',MiamCore.unit(m)];}));
   write('Emplacements',s.locations.map(function(l){return [l.id,literal_(l.name)];}));
   write('Suggestions',s.suggestions.map(function(item){return [item.id,item.at,item.author,literal_(item.title),literal_(item.text),item.seenBy.indexOf('EK')>=0?'Oui':'Non'];}));
   SpreadsheetApp.flush();
@@ -91,4 +93,19 @@ function rpc(action,args) {
       return {ok:true,state:s,eventId:e?e.id:args.id,warning:warning};
     } finally {lock.releaseLock();}
   } catch(e) {return {ok:false,error:e.message||'La demande n’a pas pu être enregistrée.',code:e.message==='Choisissez votre profil pour continuer.'?'PROFILE_SESSION_EXPIRED':null};}
+}
+
+// The bridge accepts requests only from the existing family app origin.
+function bridge_(nonce) {
+  if(typeof nonce!=='string'||! /^[a-f0-9]{32}$/.test(nonce))return HtmlService.createHtmlOutput('Connexion invalide.');
+  var origin='https://etiennekepeklian-max.github.io';
+  var source='<!doctype html><html><head><meta charset="utf-8"></head><body><script>'+ 
+    'var nonce='+JSON.stringify(nonce)+',parentOrigin='+JSON.stringify(origin)+';'+
+    'window.addEventListener("message",function(e){var d=e.data;if(e.source!==window.top||e.origin!==parentOrigin||!d||d.type!=="miam.rpc"||d.nonce!==nonce||!Number.isSafeInteger(d.id)||d.id<1)return;'+
+    'var allowed=["login","logout","state","location.add","location.delete","meal.add","meal.edit","meal.take","meal.undo","suggestion.add","suggestion.seen"];if(allowed.indexOf(d.action)<0||!d.args||typeof d.args!=="object")return;'+
+    'function reply(value){window.top.postMessage({type:"miam.result",nonce:nonce,id:d.id,result:value},parentOrigin);}'+
+    'google.script.run.withSuccessHandler(reply).withFailureHandler(function(){window.top.postMessage({type:"miam.result",nonce:nonce,id:d.id,failure:true},parentOrigin);}).rpc(d.action,d.args);});'+
+    'window.top.postMessage({type:"miam.ready",nonce:nonce},parentOrigin);'+
+    '</script></body></html>';
+  return HtmlService.createHtmlOutput(source).setTitle('Connexion au stock Miam Maman').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
