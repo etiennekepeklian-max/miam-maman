@@ -41,3 +41,35 @@ test('suggestions are kept and EK receives their complete text once',()=>{
   assert.throws(()=>c.command(s,'maison','suggestion.add',{text:'x'.repeat(1001)},'huge',now,'MLK'));
 });
 test('EK own suggestions do not create a self notification',()=>{const e=c.command(c.empty(),'maison','suggestion.add',{title:'Mon idée',text:'Plus de bonnes choses.'},'own',now,'EK');assert.equal(c.unreadSuggestions(c.replay([e]),'EK').length,0);});
+
+test('raw vegetables use pieces grams or precise kilos without changing existing dishes',()=>{
+  for(const [unit,quantity,threshold,take,remaining] of [['pieces',6,2,2,4],['g',1500,300,250,1250],['kg',0.3,0.1,0.2,0.1]]){
+    let s=fixture();s=perform(s,'maison','meal.add',{name:'Carottes',kind:'vegetable',unit,quantity,threshold,locationId:'loc',preparedAt:'2026-10-27',emoji:'🥕'},'veg');
+    s=perform(s,'maison','meal.take',{id:'veg',quantity:take},'take-veg');assert.equal(s.meals[1].quantity,remaining);assert.equal(c.unit(s.meals[1]),unit);assert.equal(s.meals[1].kind,'vegetable');assert.equal(s.meals[0].quantity,2);assert.equal(c.unit(s.meals[0]),'portions');
+    s=perform(s,'maison','meal.edit',{id:'veg',locationId:'loc',threshold:remaining},'edit-veg');assert.equal(c.isLow(s.meals[1]),true);
+    s=perform(s,'maison','meal.undo',{eventId:'take-veg'},'undo-veg');assert.equal(s.meals[1].quantity,quantity);
+    assert.throws(()=>c.command(s,'maison','meal.take',{id:'veg',quantity:quantity+1},'too-much',now),/Il ne reste/);
+  }
+});
+test('invalid vegetable units and fractional pieces or grams are rejected',()=>{
+  const s=fixture(),base={name:'Carottes',kind:'vegetable',unit:'pieces',quantity:6,threshold:2,preparedAt:'2026-10-27',locationId:'loc'};
+  for(const change of [{unit:'litres'},{unit:'portions'},{kind:'unknown'},{quantity:1.2},{unit:'g',quantity:1.5},{unit:'kg',quantity:0.0001},{unit:'kg',quantity:NaN},{threshold:-1}])assert.throws(()=>c.command(s,'maison','meal.add',{...base,...change},'bad',now));
+});
+test('old journal entries remain portions and raw vegetable dictation extracts weight',()=>{
+  const old=fixture().events.map(e=>{const copy=clone(e);delete copy.data.kind;delete copy.data.unit;return copy;});assert.equal(c.unit(c.replay(old).meals[0]),'portions');
+  for(const phrase of ['Deux kilos de carottes dans Notre emplacement','1,5 kg de carottes dans Notre emplacement']){const r=c.parseVoice(phrase,[{id:'loc',name:'Notre emplacement'}]);assert.equal(r.unit,'kg');assert.equal(r.name,'carottes');assert.equal(r.locationId,'loc');assert.ok(r.quantity>0);}
+});
+
+test('dictation fills a name even without a quantity and accepts parts or a trailing weight',()=>{
+  assert.equal(c.parseVoice('Soupe de légumes',[]).name,'Soupe de légumes');
+  assert.equal(c.parseVoice('Soupe de légumes',[]).quantity,undefined);
+  const parts=c.parseVoice('Six parts de lasagnes dans Notre emplacement',[{id:'loc',name:'Notre emplacement'}]);assert.equal(parts.quantity,6);assert.equal(parts.name,'lasagnes');assert.equal(parts.unit,'portions');
+  const trailing=c.parseVoice('Carottes 500 grammes',[]);assert.equal(trailing.name,'Carottes');assert.equal(trailing.quantity,500);assert.equal(trailing.unit,'g');
+});
+test('spoken decimal kilos and alert quantities in grams are understood',()=>{
+  const r=c.parseVoice('Un virgule cinq kilos de carottes dans Notre emplacement, alerte à 500 grammes',[{id:'loc',name:'Notre emplacement'}]);assert.equal(r.quantity,1.5);assert.equal(r.unit,'kg');assert.equal(r.threshold,0.5);assert.equal(r.name,'carottes');assert.equal(r.locationId,'loc');
+  const pieces=c.parseVoice('Six carottes dans Notre emplacement',[]);assert.equal(pieces.quantity,6);assert.equal(pieces.unit,'pieces');assert.equal(pieces.name,'carottes');
+});
+test('all offered illustrations can be saved with the proper food category',()=>{
+  for(const kind of ['dish','vegetable']){assert.ok(c.illustrations[kind].length>=18);for(const item of c.illustrations[kind]){const e=c.command(fixture(),'maison','meal.add',{kind,name:item.label,emoji:item.emoji,unit:kind==='dish'?'portions':'pieces',quantity:2,threshold:1,preparedAt:'2026-10-27',locationId:'loc'},'icon',now);assert.equal(e.data.emoji,item.emoji);}}
+});

@@ -72,3 +72,21 @@ test('suggestions reach EK across server sessions and remain readable in the she
   assert.equal(tabs.get('Suggestions').rows[1][2],'MLK');assert.equal(tabs.get('Suggestions').rows[1][5],'Non');
   assert.equal(c.rpc('suggestion.seen',{token:recipient.token,id:'seen',payload:{ids:['idea']}}).ok,true);assert.equal(tabs.get('Suggestions').rows[1][5],'Oui');
 });
+
+test('all profiles persist vegetable units and migrate Stock headers without damaging dishes',()=>{
+  const {c,tabs}=server();
+  for(const profile of ['MLK','GK','EK']){
+    const user=c.rpc('login',{profile}),act=(a,id,payload)=>{const r=c.rpc(a,{token:user.token,id,payload});assert.equal(r.ok,true,r.error);assert.equal(r.warning,null);return r;};
+    assert.equal(tabs.get('Stock').rows[0][9],'Unité');
+    act('location.add','loc-'+profile,{name:'Coin '+profile});
+    act('meal.add','veg-'+profile,{name:'Courgettes',kind:'vegetable',unit:'kg',quantity:1.5,threshold:0.5,preparedAt:'2026-10-27',locationId:'loc-'+profile});
+    act('meal.take','take-'+profile,{id:'veg-'+profile,quantity:0.25});
+    const row=tabs.get('Stock').rows.find(r=>r[0]==='veg-'+profile);assert.equal(row[2],1.25);assert.equal(row[8],'Légumes non cuisinés');assert.equal(row[9],'kg');
+    const e=JSON.parse(tabs.get('Journal').rows.at(-1)[12]);assert.equal(e.data.unit,'kg');assert.equal(e.profile,profile);
+  }
+});
+
+test('Google bridge produces executable HTML without serving the full app and rejects invalid nonces',()=>{
+  const {c}=server();c.HtmlService={XFrameOptionsMode:{ALLOWALL:'all'},createHtmlOutput:html=>({html,setTitle(){return this;},setXFrameOptionsMode(){return this;}})};
+  const response=c.doGet({parameter:{bridge:'1',nonce:'a'.repeat(32)}});const source=response.html.match(/<script>([\s\S]*)<\/script>/)[1];assert.doesNotThrow(()=>new vm.Script(source));assert.match(source,/e.source!==window.top/);assert.match(source,/etiennekepeklian-max.github.io/);assert.equal(c.doGet({parameter:{bridge:'1',nonce:'invalid'}}).html,'Connexion invalide.');
+});
