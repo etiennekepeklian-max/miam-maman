@@ -1,10 +1,10 @@
 /* Shared domain rules: browser preview and Google Apps Script. */
 var MiamCore = (function () {
   'use strict';
-  var PROFILES = [{id:'MLK',role:'maman',label:'MLK'},{id:'GK',role:'famille',label:'GK'},{id:'EK',role:'famille',label:'EK'}];
+  var PROFILES = [{id:'MLK',role:'maison',label:'MLK'},{id:'GK',role:'maison',label:'GK'},{id:'EK',role:'maison',label:'EK'}];
   function profile(id) { var found=PROFILES.find(function(p){return p.id===id;}); if(!found) fail('Choisissez MLK, GK ou EK.'); return Object.assign({},found); }
   function isLow(meal) { return meal.quantity>0 && meal.quantity<=meal.threshold; }
-  function empty() { return {locations: [], meals: [], events: []}; }
+  function empty() { return {locations: [], meals: [], events: [], suggestions: []}; }
   function fail(message) { throw new Error(message); }
   function text(value, max) {
     if (typeof value !== 'string' || !value.trim() || value.trim().length > max) fail('Merci de compléter les champs avec un texte valide.');
@@ -26,22 +26,31 @@ var MiamCore = (function () {
       if (e.action === 'meal.take' && m) m.quantity -= d.quantity;
       if (e.action === 'meal.edit' && m) Object.assign(m, {locationId:d.locationId, locationName:d.locationName, detail:d.detail, threshold:d.threshold});
       if (e.action === 'meal.undo' && m) m.quantity += d.quantity;
+      if (e.action === 'suggestion.add') s.suggestions.push({id:d.id,title:d.name,text:d.text,author:e.profile,at:e.at,seenBy:e.profile==='EK'?['EK']:[]});
+      if (e.action === 'suggestion.seen') s.suggestions.forEach(function(item){if(d.ids.indexOf(item.id)>=0 && item.seenBy.indexOf(e.profile)<0)item.seenBy.push(e.profile);});
       s.events.push(e);
     });
     return s;
   }
   function command(s, role, action, args, id, now, actor) {
-    if (role !== 'maman' && role !== 'famille') fail('Connexion nécessaire.');
+    if (role !== 'maison' && role !== 'maman' && role !== 'famille') fail('Connexion nécessaire.');
     key(id);
     var duplicate = s.events.find(function(e) { return e.id === id; });
     if (duplicate) {
       if ((duplicate.profile || null) !== (actor || null) || duplicate.role !== role || duplicate.action !== action || duplicate.request !== JSON.stringify(args)) fail('Cette opération existe déjà avec un contenu différent.');
       return null;
     }
-    if (['location.add','location.delete','meal.add','meal.edit'].indexOf(action) >= 0 && role !== 'maman') fail('Seul le compte Maman peut gérer les préparations et les emplacements.');
-    if (action === 'meal.take' && role !== 'famille') fail('Utilisez le compte Famille pour vous servir.');
     var d, meal, loc;
-    if (action === 'location.add') {
+    if (action === 'suggestion.add') {
+      profile(actor);
+      d = {id:id,name:text(args.title||'Une idée pour l’appli',80),text:text(args.text,1000)};
+    } else if (action === 'suggestion.seen') {
+      profile(actor);
+      if(!Array.isArray(args.ids)||!args.ids.length||args.ids.length>100)fail('Suggestions invalides.');
+      var ids=args.ids.filter(function(value,index,list){return typeof value==='string'&&list.indexOf(value)===index&&s.suggestions.some(function(item){return item.id===value;});});
+      if(ids.length!==args.ids.length)fail('Suggestions invalides.');
+      d={id:id,ids:ids};
+    } else if (action === 'location.add') {
       var name = text(args.name, 80);
       if (s.locations.some(function(x) { return norm(x.name) === norm(name); })) fail('Cet emplacement existe déjà.');
       d = {id:id, name:name};
@@ -71,11 +80,11 @@ var MiamCore = (function () {
       d = {id:meal.id, name:meal.name, locationId:loc.id, locationName:loc.name, detail:String(args.detail || '').trim().slice(0,120), threshold:integer(args.threshold,0,999)};
     } else if (action === 'meal.undo') {
       var taken = s.events.find(function(e) { return e.id === args.eventId && e.action === 'meal.take'; });
-      if (!taken || taken.role !== role || role !== 'famille' || (taken.profile && taken.profile !== actor)) fail('Cette prise ne peut pas être annulée avec ce compte.');
+      if (!taken) fail('Cette prise ne peut pas être annulée avec ce compte.');
       if (s.events.some(function(e) { return e.action === 'meal.undo' && e.data.eventId === taken.id; })) fail('Cette prise a déjà été annulée.');
       if (new Date(now).getTime()-new Date(taken.at).getTime()>24*3600000) fail('L’annulation est possible pendant 24 heures.');
       var undoMeal = s.meals.find(function(m) { return m.id === taken.data.id; });
-      if (!undoMeal || !s.locations.some(function(l) { return l.id === undoMeal.locationId; })) fail('Cet emplacement a été supprimé. Demandez à Maman de replacer ce plat dans un emplacement avant d’annuler.');
+      if (!undoMeal || !s.locations.some(function(l) { return l.id === undoMeal.locationId; })) fail('Cet emplacement a été supprimé. Replacez ce plat dans un emplacement avant d’annuler.');
       d = {id:taken.data.id, name:taken.data.name, quantity:taken.data.quantity, eventId:taken.id};
     } else fail('Action inconnue.');
     return {id:id, at:now, action:action, role:role, profile:actor||null, data:d, request:JSON.stringify(args)};
@@ -95,5 +104,6 @@ var MiamCore = (function () {
     if (candidates[0]) result.locationId = candidates[0].id;
     return result;
   }
-  return {profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
+  function unreadSuggestions(s,actor){return actor==='EK'?s.suggestions.filter(function(item){return item.author!==actor&&item.seenBy.indexOf(actor)<0;}):[];}
+  return {unreadSuggestions:unreadSuggestions,profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
 })();

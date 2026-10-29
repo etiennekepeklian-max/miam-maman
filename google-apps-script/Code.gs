@@ -5,7 +5,8 @@ var HEADERS = {
   Stock:['ID préparation','Plat','Portions','Emplacement','Repère','Préparé le','Seuil','État'],
   Emplacements:['ID emplacement','Nom'],
   Journal:['Horodatage','ID opération','Action','Compte','ID objet','Nom','Emplacement','Variation portions','Seuil','Préparé le','Repère','Opération annulée','Données événement'],
-  Comptes:['Compte','Utilisation']
+  Comptes:['Compte','Utilisation'],
+  Suggestions:['ID suggestion','Date','Profil','Titre','Suggestion','Lue par EK']
 };
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index').setTitle('Miam Maman !').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).addMetaTag('viewport','width=device-width, initial-scale=1');
@@ -19,12 +20,12 @@ function owner_() {
 function sheet_() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
 function afficherLesProfils() {
   owner_();
-  SpreadsheetApp.getUi().alert('Les profils de la maison','MLK : préparer les plats, gérer les emplacements et les seuils.\nGK et EK : consulter le stock et prendre des portions.\n\nAucun mot de passe : chacun choisit son profil dans l’application.',SpreadsheetApp.getUi().ButtonSet.OK);
+  SpreadsheetApp.getUi().alert('Les profils de la maison','MLK, GK et EK ont les mêmes possibilités : ajouter des plats, prendre des portions, gérer les emplacements et les seuils.\n\nAucun mot de passe : chacun choisit son profil dans l’application.',SpreadsheetApp.getUi().ButtonSet.OK);
 }
 function profilesSheet_() {
   var ss=sheet_();
   Object.keys(HEADERS).forEach(function(name){var s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(!s.getLastRow())s.appendRow(HEADERS[name]);});
-  var rows=[['MLK','Préparer les plats, gérer les emplacements et les seuils'],['GK','Consulter les plats et déclarer les portions prises'],['EK','Consulter les plats et déclarer les portions prises']];
+  var rows=[['MLK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions'],['GK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions'],['EK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions']];
   var sh=ss.getSheetByName('Comptes');
   if(JSON.stringify(sh.getRange(2,1,3,2).getValues())!==JSON.stringify(rows)){
     sh.getRange(2,1,3,2).setValues(rows);
@@ -38,13 +39,13 @@ function login_(args) {
   try {
     profilesSheet_();
     var token=Utilities.getUuid()+Utilities.getUuid();
-    CacheService.getScriptCache().put('PROFILE_V2_'+token,JSON.stringify({role:p.role,profile:p.id}),21600);
+    CacheService.getScriptCache().put('PROFILE_V3_'+token,JSON.stringify({role:p.role,profile:p.id}),21600);
     return {ok:true,role:p.role,profile:p.id,token:token,state:readState_()};
   } finally {lock.releaseLock();}
 }
 function session_(token) {
   if(typeof token!=='string'||token.length>200)throw new Error('Choisissez votre profil pour continuer.');
-  var value=CacheService.getScriptCache().get('PROFILE_V2_'+token);
+  var value=CacheService.getScriptCache().get('PROFILE_V3_'+token);
   if(!value)throw new Error('Choisissez votre profil pour continuer.');
   var s=JSON.parse(value),p=MiamCore.profile(s.profile);
   if(p.role!==s.role)throw new Error('Profil invalide.');
@@ -68,6 +69,7 @@ function project_(s) {
   function write(name,rows){var sh=ss.getSheetByName(name);var size=HEADERS[name].length;if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,size).clearContent();if(rows.length){if(sh.getMaxRows()<rows.length+1)sh.insertRowsAfter(sh.getMaxRows(),rows.length+1-sh.getMaxRows());sh.getRange(2,1,rows.length,size).setValues(rows);}}
   write('Stock',s.meals.map(function(m){return [m.id,literal_(m.name),m.quantity,literal_(m.locationName),literal_(m.detail),m.preparedAt,m.threshold,m.quantity===0?'Terminé':m.quantity<=m.threshold?'Bientôt fini':'Disponible'];}));
   write('Emplacements',s.locations.map(function(l){return [l.id,literal_(l.name)];}));
+  write('Suggestions',s.suggestions.map(function(item){return [item.id,item.at,item.author,literal_(item.title),literal_(item.text),item.seenBy.indexOf('EK')>=0?'Oui':'Non'];}));
   SpreadsheetApp.flush();
 }
 function reconstruireLeStock() {owner_();var l=LockService.getScriptLock();l.waitLock(15000);try{project_(readState_());}finally{l.releaseLock();}}
@@ -76,7 +78,7 @@ function rpc(action,args) {
     if(typeof action!=='string'||!args||typeof args!=='object')throw new Error('Requête invalide.');
     if(action==='login')return login_(args);
     var session=session_(args.token);
-    if(action==='logout'){CacheService.getScriptCache().remove('PROFILE_V2_'+args.token);return {ok:true};}
+    if(action==='logout'){CacheService.getScriptCache().remove('PROFILE_V3_'+args.token);return {ok:true};}
     var lock=LockService.getScriptLock();lock.waitLock(15000);
     try {
       var s=readState_();
