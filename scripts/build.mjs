@@ -1,11 +1,16 @@
 import fs from 'node:fs/promises';
+import {Script} from 'node:vm';
 const root = new URL('../',import.meta.url);
 const sharedUrl=(process.env.MIAM_GOOGLE_WEBAPP_URL||'').trim();
 if(sharedUrl && !/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(sharedUrl))throw new Error('MIAM_GOOGLE_WEBAPP_URL doit être une URL de déploiement Google Apps Script terminée par /exec.');
 if(process.env.MIAM_REQUIRE_SHARED_BACKEND==='1'&&!sharedUrl)throw new Error('Publication arrêtée : renseigner MIAM_GOOGLE_WEBAPP_URL après activation et vérification du service Google.');
 const read=p=>fs.readFile(new URL(p,root),'utf8');
 const [template,css,core,app,mascot]=await Promise.all([read('src/index.html'),read('src/style.css'),read('src/core.js'),read('src/app.js'),fs.readFile(new URL('src/mascot.webp',root))]);
-const html=template.replace('/*__STYLE__*/',css).replace('/*__CORE__*/',core).replace('/*__APP__*/',app).replaceAll('__MASCOT__','data:image/webp;base64,'+mascot.toString('base64'));
+new Script(core,{filename:'src/core.js'});
+new Script(app,{filename:'src/app.js'});
+let html=template.replace('/*__STYLE__*/',css).replace('/*__CORE__*/',core).replace('/*__APP__*/',app).replaceAll('__MASCOT__','data:image/webp;base64,'+mascot.toString('base64'));
+for(const kind of ['add','take'])for(const ext of ['png','gif']){const bytes=await fs.readFile(new URL('src/help-'+kind+'.'+ext,root));html=html.replaceAll('__HELP_'+kind.toUpperCase()+'_'+ext.toUpperCase()+'__','data:image/'+ext+';base64,'+bytes.toString('base64'));}
+if(/__HELP_[A-Z_]+__/.test(html))throw new Error('Un guide d’aide manque au build.');
 await fs.mkdir(new URL('dist/',root),{recursive:true});
 const pwaHead='<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">';
 const registration='<script>if("serviceWorker" in navigator && location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>';
