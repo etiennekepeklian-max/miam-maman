@@ -111,7 +111,7 @@ var MiamCore = (function () {
     if(!match)match=norm(spoken).match(new RegExp('^'+number+'\\s+(?=[a-z])'));
     var name=spoken;
     if(match){result.quantity=value(match[1]);if(match[2])result.unit=unitOf(match[2]);else result.unit='pieces';var after=spoken.slice(match.index+match[0].length).replace(/^\s*(?:de\s+|d[’'])/i,'');var before=spoken.slice(0,match.index).trim();name=after.trim()?after:before;}
-    name=name.split(/\s+(?:dans|au|aux|à la|a la|à l[’']|a l[’']|sur)\s+/i)[0].replace(/^(?:j[’']ai\s+(?:fait|cuisiné|prepare|préparé)|je\s+(?:prepare|prépare|cuisine)|ajouter?|enregistrer)\s+/i,'').replace(/[,.;:]+$/,'').trim();
+    name=name.split(/\s+(?:dans|au|aux|à la|a la|à l[’']|a l[’']|sur)\s+/i)[0].replace(/^(?:j[’']ai\s+(?:fait|cuisiné|prepare|préparé)|je\s+(?:prepare|prépare|cuisine)|ajouter?|enregistrer)\s+/i,'').trim().replace(/[,.;:]+$/,'').trim();
     if(name)result.name=name;
     if(alert){result.threshold=value(alert[1]);var alertUnit=alert[2]?unitOf(alert[2]):result.unit;if(result.unit==='kg'&&alertUnit==='g')result.threshold=result.threshold/1000;else if(result.unit==='g'&&alertUnit==='kg')result.threshold=result.threshold*1000;}
     var candidates=locations.filter(function(l){return normalized.indexOf(norm(l.name))>=0;}).sort(function(a,b){return b.name.length-a.name.length;});
