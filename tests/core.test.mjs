@@ -7,8 +7,8 @@ const c=context.MiamCore,now='2026-10-27T12:00:00.000Z';
 const clone=x=>JSON.parse(JSON.stringify(x));
 function perform(s,role,action,args,id){const event=c.command(s,role,action,args,id,now);return event?c.replay([...s.events,event]):s;}
 function fixture(){let s=c.empty();s=perform(s,'maman','location.add',{name:'Notre emplacement'},'loc');s=perform(s,'maman','meal.add',{name:'Lasagnes',locationId:'loc',quantity:2,threshold:1,preparedAt:'2026-10-27',detail:'Boîte bleue',emoji:'🥘'},'meal');return s;}
-test('starts with no meals and no storage locations',()=>assert.deepEqual(clone(c.empty()),{locations:[],meals:[],events:[]}));
-test('family cannot add meals or create/delete/move storage',()=>{const s=fixture();for(const action of ['location.add','location.delete','meal.add','meal.edit'])assert.throws(()=>c.command(s,'famille',action,{name:'Test'},'attack'+action,now),/Seul le compte Maman/);});
+test('starts with no meals and no storage locations',()=>assert.deepEqual(clone(c.empty()),{locations:[],meals:[],events:[],suggestions:[]}));
+test('MLK GK and EK share every stock action',()=>{for(const p of c.profiles){let s=c.empty();function act(action,args,id){const e=c.command(s,p.role,action,args,id,now,p.id);s=c.replay([...s.events,e]);}act('location.add',{name:'Notre coin'},'loc');act('meal.add',{name:'Soupe',locationId:'loc',quantity:2,threshold:1,preparedAt:'2026-10-27'},'meal');act('meal.edit',{id:'meal',locationId:'loc',threshold:2},'edit');act('meal.take',{id:'meal',quantity:2},'take');act('meal.undo',{eventId:'take'},'undo');act('meal.take',{id:'meal',quantity:2},'take-again');act('location.delete',{id:'loc'},'delete');assert.equal(s.meals[0].quantity,0);assert.equal(s.locations.length,0);assert.equal(s.events[0].profile,p.id);}});
 test('a used location cannot be removed; empty one can, preserving meal history',()=>{let s=fixture();assert.throws(()=>c.command(s,'maman','location.delete',{id:'loc'},'del',now),/Déplacez/);s=perform(s,'famille','meal.take',{id:'meal',quantity:2},'take');s=perform(s,'maman','location.delete',{id:'loc'},'del');assert.equal(s.locations.length,0);assert.equal(s.meals[0].locationName,'Notre emplacement');});
 test('moving a meal permits deletion of its previous location',()=>{let s=fixture();s=perform(s,'maman','location.add',{name:'Nouvel endroit'},'loc2');s=perform(s,'maman','meal.edit',{id:'meal',locationId:'loc2',detail:'Étagère haute',threshold:0},'move');s=perform(s,'maman','location.delete',{id:'loc'},'delete');assert.equal(s.locations.length,1);assert.equal(s.meals[0].locationId,'loc2');assert.equal(s.meals[0].quantity,2);});
 test('stock never becomes negative and concurrent last-portion requests are rejected',()=>{let s=fixture();s=perform(s,'famille','meal.take',{id:'meal',quantity:2},'take');assert.throws(()=>c.command(s,'famille','meal.take',{id:'meal',quantity:1},'take2',now),/Il ne reste que 0/);assert.equal(s.meals[0].quantity,0);});
@@ -32,3 +32,12 @@ test('voice can set a separate alert threshold, including zero',()=>{
   assert.equal(r.quantity,6);assert.equal(r.threshold,2);assert.equal(r.locationId,'loc');assert.equal(r.name,'lasagnes');
   assert.equal(c.parseVoice("3 portions de soupe stock d'alerte zéro",[]).threshold,0);
 });
+
+test('suggestions are kept and EK receives their complete text once',()=>{
+  let s=c.empty();const add=c.command(s,'maison','suggestion.add',{title:'Une idée',text:'Afficher une liste de courses.'},'idea',now,'GK');
+  s=c.replay([add]);assert.equal(s.suggestions[0].author,'GK');assert.equal(c.unreadSuggestions(s,'EK')[0].text,'Afficher une liste de courses.');assert.equal(c.unreadSuggestions(s,'GK').length,0);
+  const seen=c.command(s,'maison','suggestion.seen',{ids:['idea']},'seen',now,'EK');s=c.replay([...s.events,seen]);assert.equal(c.unreadSuggestions(s,'EK').length,0);assert.equal(s.suggestions[0].text,'Afficher une liste de courses.');
+  assert.throws(()=>c.command(s,'maison','suggestion.add',{title:'Non',text:' '},'empty',now,'MLK'));
+  assert.throws(()=>c.command(s,'maison','suggestion.add',{text:'x'.repeat(1001)},'huge',now,'MLK'));
+});
+test('EK own suggestions do not create a self notification',()=>{const e=c.command(c.empty(),'maison','suggestion.add',{title:'Mon idée',text:'Plus de bonnes choses.'},'own',now,'EK');assert.equal(c.unreadSuggestions(c.replay([e]),'EK').length,0);});
