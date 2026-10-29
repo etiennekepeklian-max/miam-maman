@@ -12,8 +12,10 @@
 
 - 33 tests réussis : pièces, grammes, kilos, précision des retraits et annulations, rejet des unités invalides, compatibilité avec les anciens plats, projection Google Sheet et mêmes droits pour tous.
 - Essai navigateur isolé : ajout de 1,5 kg de carottes, seuil à 0,5 kg, retrait de 0,25 kg puis annulation (retour à 1,5 kg). Aucun essai dans le stock partagé.
-- Version 4 Google en cours de publication, sans changement de classeur ni de droits.
+- Version 4 Google publiée, sans changement de classeur ni de droits. Interface complète publiée sur GitHub ; connexion EK au stock réel vérifiée, avec conservation de la préparation existante.
 
 - 36 illustrations de plats et 18 de légumes : toutes acceptées par les règles serveur.
 - Dictée : nom sans quantité, parts, pièces, kilos décimaux et seuils en grammes ; états intermédiaires, erreur dans le formulaire et secours avec micro du clavier. Événements du moteur testés avec simulation ; capture audio réelle à essayer sur le téléphone.
 - Connexion GitHub → Google testée sur les identifiants de page, l’origine et la source des réponses ; HTML Google de connexion valide.
+
+- Dans le formulaire publié (sans enregistrement réel) : 18 illustrations de légumes, phrase « 1,5 kilos de carottes, alerte à 500 grammes » reprise en kg avec seuil 0,5. La vraie capture audio n’a pas pu être exercée depuis le navigateur de vérification.
