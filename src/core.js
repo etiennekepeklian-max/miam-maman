@@ -2,8 +2,16 @@
 var MiamCore = (function () {
   'use strict';
   var PROFILES = [{id:'MLK',role:'maison',label:'MLK'},{id:'GK',role:'maison',label:'GK'},{id:'EK',role:'maison',label:'EK'}];
+  var ILLUSTRATIONS={"dish": [{"emoji": "🍲", "label": "Cocotte"}, {"emoji": "🥘", "label": "Poêlée"}, {"emoji": "🥣", "label": "Soupe"}, {"emoji": "🍝", "label": "Pâtes"}, {"emoji": "🥧", "label": "Tarte"}, {"emoji": "🥗", "label": "Salade"}, {"emoji": "🍛", "label": "Curry et riz"}, {"emoji": "🍚", "label": "Riz"}, {"emoji": "🍜", "label": "Nouilles"}, {"emoji": "🍕", "label": "Pizza"}, {"emoji": "🍔", "label": "Burger"}, {"emoji": "🥪", "label": "Sandwich"}, {"emoji": "🌮", "label": "Tacos"}, {"emoji": "🌯", "label": "Wrap"}, {"emoji": "🥙", "label": "Pain garni"}, {"emoji": "🧆", "label": "Falafels"}, {"emoji": "🥟", "label": "Raviolis"}, {"emoji": "🍗", "label": "Volaille"}, {"emoji": "🥩", "label": "Viande"}, {"emoji": "🥓", "label": "Lardons"}, {"emoji": "🐟", "label": "Poisson"}, {"emoji": "🍤", "label": "Crevettes"}, {"emoji": "🍳", "label": "Œufs"}, {"emoji": "🥚", "label": "Œuf dur"}, {"emoji": "🥔", "label": "Pommes de terre"}, {"emoji": "🫘", "label": "Légumineuses"}, {"emoji": "🍄", "label": "Champignons"}, {"emoji": "🥦", "label": "Brocoli"}, {"emoji": "🥕", "label": "Carottes"}, {"emoji": "🥬", "label": "Légumes verts"}, {"emoji": "🧀", "label": "Fromage"}, {"emoji": "🥖", "label": "Pain"}, {"emoji": "🥞", "label": "Crêpes"}, {"emoji": "🧇", "label": "Gaufres"}, {"emoji": "🍰", "label": "Gâteau"}, {"emoji": "🍮", "label": "Dessert"}], "vegetable": [{"emoji": "🥕", "label": "Carottes"}, {"emoji": "🥦", "label": "Brocoli"}, {"emoji": "🥔", "label": "Pommes de terre"}, {"emoji": "🍅", "label": "Tomates"}, {"emoji": "🥒", "label": "Concombre ou courgette"}, {"emoji": "🧅", "label": "Oignons"}, {"emoji": "🧄", "label": "Ail"}, {"emoji": "🥬", "label": "Salade ou chou"}, {"emoji": "🍆", "label": "Aubergines"}, {"emoji": "🫑", "label": "Poivrons"}, {"emoji": "🌶️", "label": "Piments"}, {"emoji": "🌽", "label": "Maïs"}, {"emoji": "🫛", "label": "Petits pois"}, {"emoji": "🫘", "label": "Haricots"}, {"emoji": "🍄", "label": "Champignons"}, {"emoji": "🍠", "label": "Patates douces"}, {"emoji": "🥑", "label": "Avocat"}, {"emoji": "🫒", "label": "Olives"}]};
   function profile(id) { var found=PROFILES.find(function(p){return p.id===id;}); if(!found) fail('Choisissez MLK, GK ou EK.'); return Object.assign({},found); }
   function isLow(meal) { return meal.quantity>0 && meal.quantity<=meal.threshold; }
+  function unit(m) { return m.unit || 'portions'; }
+  function amount(v,u,zero) {
+    var max=u==='g'?999999:999,scale=u==='kg'?1000:1;
+    if(typeof v!=='number'||!Number.isFinite(v)||v<(zero?0:1/scale)||v>max||Math.abs(v*scale-Math.round(v*scale))>1e-7)fail('Quantité invalide : utilisez un nombre entier, ou jusqu’à trois décimales pour les kg.');
+    return Math.round(v*scale)/scale;
+  }
+  function rounded(v){return Math.round(v*1000)/1000;}
   function empty() { return {locations: [], meals: [], events: [], suggestions: []}; }
   function fail(message) { throw new Error(message); }
   function text(value, max) {
@@ -23,9 +31,9 @@ var MiamCore = (function () {
       if (e.action === 'location.add') s.locations.push({id: d.id, name: d.name});
       if (e.action === 'location.delete') s.locations = s.locations.filter(function(x) { return x.id !== d.id; });
       if (e.action === 'meal.add') s.meals.push(Object.assign({}, d));
-      if (e.action === 'meal.take' && m) m.quantity -= d.quantity;
+      if (e.action === 'meal.take' && m) m.quantity = rounded(m.quantity-d.quantity);
       if (e.action === 'meal.edit' && m) Object.assign(m, {locationId:d.locationId, locationName:d.locationName, detail:d.detail, threshold:d.threshold});
-      if (e.action === 'meal.undo' && m) m.quantity += d.quantity;
+      if (e.action === 'meal.undo' && m) m.quantity = rounded(m.quantity+d.quantity);
       if (e.action === 'suggestion.add') s.suggestions.push({id:d.id,title:d.name,text:d.text,author:e.profile,at:e.at,seenBy:e.profile==='EK'?['EK']:[]});
       if (e.action === 'suggestion.seen') s.suggestions.forEach(function(item){if(d.ids.indexOf(item.id)>=0 && item.seenBy.indexOf(e.profile)<0)item.seenBy.push(e.profile);});
       s.events.push(e);
@@ -62,22 +70,24 @@ var MiamCore = (function () {
     } else if (action === 'meal.add') {
       loc = s.locations.find(function(x) { return x.id === args.locationId; });
       if (!loc) fail('Créez ou choisissez un emplacement avant d’enregistrer le plat.');
+      var kind=args.kind||'dish',u=args.unit||(kind==='vegetable'?'pieces':'portions');
+      if(['dish','vegetable'].indexOf(kind)<0 || (kind==='dish'?u!=='portions':['pieces','g','kg'].indexOf(u)<0))fail('Type ou unité invalide.');
       var date = text(args.preparedAt, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(Date.parse(date)) || new Date(date+'T00:00:00Z').toISOString().slice(0,10) !== date) fail('La date de préparation est invalide.');
       var today = new Intl.DateTimeFormat('sv-SE', {timeZone:'Europe/Paris'}).format(new Date(now));
       if (date > today) fail('La date de préparation ne peut pas être dans le futur.');
-      d = {id:id, name:text(args.name,100), quantity:integer(args.quantity,1,999), threshold:integer(args.threshold,0,999), locationId:loc.id, locationName:loc.name, detail:String(args.detail || '').trim().slice(0,120), preparedAt:date, emoji:['🍲','🥘','🥣','🍝','🥧','🥗'].indexOf(args.emoji)>=0?args.emoji:'🍲'};
+      d = {id:id, name:text(args.name,100), kind:kind,unit:u,quantity:amount(args.quantity,u,false), threshold:amount(args.threshold,u,true), locationId:loc.id, locationName:loc.name, detail:String(args.detail || '').trim().slice(0,120), preparedAt:date, emoji:ILLUSTRATIONS[kind].some(function(x){return x.emoji===args.emoji;})?args.emoji:ILLUSTRATIONS[kind][0].emoji};
     } else if (action === 'meal.take') {
       meal = s.meals.find(function(x) { return x.id === args.id; });
       if (!meal) fail('Ce plat est introuvable.');
-      var n = integer(args.quantity,1,999);
-      if (n > meal.quantity) fail('Il ne reste que '+meal.quantity+' portion(s). Actualisez le stock.');
-      d = {id:meal.id, name:meal.name, quantity:n, locationName:meal.locationName};
+      var n = amount(args.quantity,unit(meal),false);
+      if (n > meal.quantity) fail('Il ne reste que '+meal.quantity+' '+unit(meal)+'. Actualisez le stock.');
+      d = {id:meal.id, name:meal.name, quantity:n, unit:unit(meal),kind:meal.kind||'dish', locationName:meal.locationName};
     } else if (action === 'meal.edit') {
       meal = s.meals.find(function(x) { return x.id === args.id; });
       loc = s.locations.find(function(x) { return x.id === args.locationId; });
       if (!meal || !loc) fail('Le plat ou l’emplacement est introuvable.');
-      d = {id:meal.id, name:meal.name, locationId:loc.id, locationName:loc.name, detail:String(args.detail || '').trim().slice(0,120), threshold:integer(args.threshold,0,999)};
+      d = {id:meal.id, name:meal.name, locationId:loc.id, locationName:loc.name, detail:String(args.detail || '').trim().slice(0,120), threshold:amount(args.threshold,unit(meal),true)};
     } else if (action === 'meal.undo') {
       var taken = s.events.find(function(e) { return e.id === args.eventId && e.action === 'meal.take'; });
       if (!taken) fail('Cette prise ne peut pas être annulée avec ce compte.');
@@ -85,25 +95,29 @@ var MiamCore = (function () {
       if (new Date(now).getTime()-new Date(taken.at).getTime()>24*3600000) fail('L’annulation est possible pendant 24 heures.');
       var undoMeal = s.meals.find(function(m) { return m.id === taken.data.id; });
       if (!undoMeal || !s.locations.some(function(l) { return l.id === undoMeal.locationId; })) fail('Cet emplacement a été supprimé. Replacez ce plat dans un emplacement avant d’annuler.');
-      d = {id:taken.data.id, name:taken.data.name, quantity:taken.data.quantity, eventId:taken.id};
+      d = {id:taken.data.id, name:taken.data.name, quantity:taken.data.quantity,unit:unit(undoMeal),kind:undoMeal.kind||'dish', eventId:taken.id};
     } else fail('Action inconnue.');
     return {id:id, at:now, action:action, role:role, profile:actor||null, data:d, request:JSON.stringify(args)};
   }
   function parseVoice(input, locations) {
-    var original = String(input).trim(), normalized = norm(original), result = {};
-    var match = normalized.match(/\b(\d+|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt)\s+portions?\b/);
-    var nums = {un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16,vingt:20};
-    if (match) {
-      result.quantity = /^\d+$/.test(match[1]) ? Number(match[1]) : nums[match[1]];
-      var start = original.slice(match.index+match[0].length).replace(/^\s*(?:de |d[’'])/i,'');
-      result.name = start.split(/\s+(?:dans|au|aux|a la|à la|a l[’']|à l[’']|sur|stock d[’']alerte|seuil|alerte)\s+/i)[0].replace(/[,.;]+$/,'').trim();
-    }
-    var alert = normalized.match(/(?:stock d[’']alerte|seuil(?: d[’']alerte)?|alerte)\s*(?:a|de|:)?\s*(\d+|zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt)\b/);
-    if(alert) result.threshold = /^\d+$/.test(alert[1]) ? Number(alert[1]) : alert[1]==='zero'?0:nums[alert[1]];
-    var candidates = locations.filter(function(l) { return normalized.indexOf(norm(l.name))>=0; }).sort(function(a,b) { return b.name.length-a.name.length; });
-    if (candidates[0]) result.locationId = candidates[0].id;
+    var nums={zero:0,un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16,vingt:20};
+    var original=String(input||'').trim().replace(/(\d+|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf)\s+virgule\s+(\d+|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf)/gi,function(_,a,b){return (nums[norm(a)]==null?a:nums[norm(a)])+'.'+(nums[norm(b)]==null?b:nums[norm(b)]);});
+    var normalized=norm(original),result={},number='(\\d+(?:[,.]\\d+)?|zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt)';
+    function value(v){return /^\d/.test(v)?Number(v.replace(',','.')):nums[v];}
+    function unitOf(v){return /^(k)/.test(v)?'kg':/^(g)/.test(v)?'g':/^(p(?:ortion|art))/.test(v)?'portions':'pieces';}
+    var alert=normalized.match(new RegExp("(?:stock d[’']alerte|seuil(?: d[’']alerte)?|alerte)\\s*(?:a|de|:)?\\s*"+number+'(?:\\s*(kg|kilos?|kilogrammes?|g|grammes?|pieces?|portions?|parts?))?'));
+    var spoken=alert?original.slice(0,alert.index):original;
+    var match=norm(spoken).match(new RegExp('\\b'+number+'\\s*(kilos?|kilogrammes?|kg|grammes?|g|pieces?|portions?|parts?)\\b'));
+    if(!match)match=norm(spoken).match(new RegExp('^'+number+'\\s+(?=[a-z])'));
+    var name=spoken;
+    if(match){result.quantity=value(match[1]);if(match[2])result.unit=unitOf(match[2]);else result.unit='pieces';var after=spoken.slice(match.index+match[0].length).replace(/^\s*(?:de\s+|d[’'])/i,'');var before=spoken.slice(0,match.index).trim();name=after.trim()?after:before;}
+    name=name.split(/\s+(?:dans|au|aux|à la|a la|à l[’']|a l[’']|sur)\s+/i)[0].replace(/^(?:j[’']ai\s+(?:fait|cuisiné|prepare|préparé)|je\s+(?:prepare|prépare|cuisine)|ajouter?|enregistrer)\s+/i,'').replace(/[,.;:]+$/,'').trim();
+    if(name)result.name=name;
+    if(alert){result.threshold=value(alert[1]);var alertUnit=alert[2]?unitOf(alert[2]):result.unit;if(result.unit==='kg'&&alertUnit==='g')result.threshold=result.threshold/1000;else if(result.unit==='g'&&alertUnit==='kg')result.threshold=result.threshold*1000;}
+    var candidates=locations.filter(function(l){return normalized.indexOf(norm(l.name))>=0;}).sort(function(a,b){return b.name.length-a.name.length;});
+    if(candidates[0])result.locationId=candidates[0].id;
     return result;
   }
   function unreadSuggestions(s,actor){return actor==='EK'?s.suggestions.filter(function(item){return item.author!==actor&&item.seenBy.indexOf(actor)<0;}):[];}
-  return {unreadSuggestions:unreadSuggestions,profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
+  return {illustrations:ILLUSTRATIONS,unit:unit,unreadSuggestions:unreadSuggestions,profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
 })();
