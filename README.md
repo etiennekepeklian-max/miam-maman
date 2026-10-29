@@ -4,21 +4,30 @@ Le stock des petits plats de la maison : leurs portions, leur date, leur emplace
 
 ## Trois profils, sans mot de passe
 
-- **MLK** prépare et range les plats, choisit les seuils d’alerte et gère les emplacements.
-- **GK** et **EK** consultent le stock et indiquent les portions prises.
-- Le profil choisi est mémorisé sur l’appareil et apparaît dans l’historique. Chacun peut changer de profil.
+- **MLK**, **GK** et **EK** ont exactement les mêmes possibilités : ajouter des plats, prendre des portions, modifier les seuils et gérer les emplacements.
+- Le profil choisi est mémorisé sur l’appareil et apparaît dans l’historique. Les initiales indiquent l’auteur de chaque action ; elles ne changent pas les droits.
 
 Ces profils ne sont pas une authentification. Lorsque le déploiement Google est accessible à tout le monde, toute personne qui possède le lien peut choisir n’importe lequel des trois profils, consulter le stock et utiliser ses fonctions. Aucun mot de passe ni compte Google n’est alors nécessaire pour les visiteurs. Le classeur Google lui-même reste privé.
 
 ## Les plats et les emplacements
 
-Aucun emplacement ni plat n’est créé par défaut. MLK crée les emplacements depuis **La maison** et peut les supprimer lorsqu’ils sont vides. Pour supprimer un emplacement occupé, déplacer d’abord les préparations vers un autre emplacement. Les anciens noms sont conservés dans l’historique.
+Aucun emplacement ni plat n’est créé par défaut. Chaque profil crée les emplacements depuis **La maison** et peut les supprimer lorsqu’ils sont vides. Pour supprimer un emplacement occupé, déplacer d’abord les préparations vers un autre emplacement. Les anciens noms sont conservés dans l’historique.
 
 Chaque préparation possède un **stock d’alerte en portions**, choisi à l’ajout puis modifiable depuis le bouton **⋯** de sa fiche. Le seuil est toujours affiché. Le plat apparaît dans **Bientôt fini** lorsque le nombre de portions restantes est inférieur ou égal au seuil ; les plats à zéro figurent dans **Terminés**. Il s’agit d’une alerte visible dans l’application, sans notification externe.
 
 La saisie fonctionne au clavier et par dictée française. Exemple : « Six portions de lasagnes dans [votre emplacement], alerte à deux portions ». La dictée remplit le formulaire ; vérifier avant d’enregistrer. Le micro du clavier du téléphone est disponible en alternative si le navigateur ne propose pas la reconnaissance vocale.
 
-GK et EK peuvent annuler leurs propres prises pendant 24 heures. Les écritures sont sérialisées et un identifiant d’opération évite de retirer deux fois une portion après un incident réseau.
+Tout le monde peut corriger une prise pendant 24 heures ; l’historique indique le profil qui l’a prise et celui qui l’a annulée. Les écritures sont sérialisées et un identifiant d’opération évite de retirer deux fois une portion après un incident réseau.
+
+## La cocotte et les suggestions
+
+Cinq animations sont proposées dans **La maison** : Coucou !, La danse du chef, Cuisiné avec amour, La cuillère magique et À table !. Chaque appareil peut choisir une animation pour l’ouverture, un ajout et une prise. Une prise souhaite toujours « Bon appétit ». Les préférences de réduction des mouvements sont respectées.
+
+La section **Vos idées** permet aux trois profils de déposer une suggestion et de consulter les idées. Le texte complet des nouvelles suggestions apparaît dans une fenêtre du profil EK, à l’ouverture ou pendant son utilisation (actualisation toutes les 30 secondes). Pas de mail ni de notification lorsque l’application est fermée. Les suggestions sont conservées dans le journal et l’onglet Suggestions du classeur.
+
+## Aide
+
+La section **Aide** explique l’ajout et la prise en quatre étapes chacun, avec deux GIF illustrés déclenchés volontairement et arrêtables. Les explications écrites restent disponibles sans animation. Les exemples sont fictifs et ne créent aucune donnée dans le stock. Les GIF sont intégrés au client Google, sans hébergeur d’images externe.
 
 ## Hébergement et installation
 

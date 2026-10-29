@@ -1,6 +1,6 @@
 # Publication et activation
 
-Le dépôt public contient l’intégralité des sources, la distribution, les tests et le workflow GitHub Pages. La version 2 utilise trois profils sans mot de passe : MLK, GK et EK.
+Le dépôt public contient l’intégralité des sources, la distribution, les tests et le workflow GitHub Pages. La version utilise trois profils sans mot de passe, avec les mêmes possibilités : MLK, GK et EK.
 
 ## Mettre à jour
 
