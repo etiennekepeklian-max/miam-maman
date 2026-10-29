@@ -61,7 +61,7 @@ test('old journal entries remain portions and raw vegetable dictation extracts w
 });
 
 test('dictation fills a name even without a quantity and accepts parts or a trailing weight',()=>{
-  assert.equal(c.parseVoice('Soupe de légumes',[]).name,'Soupe de légumes');
+  assert.equal(c.parseVoice('Soupe de légumes',[]).name,'Soupe de légumes');assert.equal(c.parseVoice('1,5 kilos de carottes, alerte à 500 grammes',[]).name,'carottes');
   assert.equal(c.parseVoice('Soupe de légumes',[]).quantity,undefined);
   const parts=c.parseVoice('Six parts de lasagnes dans Notre emplacement',[{id:'loc',name:'Notre emplacement'}]);assert.equal(parts.quantity,6);assert.equal(parts.name,'lasagnes');assert.equal(parts.unit,'portions');
   const trailing=c.parseVoice('Carottes 500 grammes',[]);assert.equal(trailing.name,'Carottes');assert.equal(trailing.quantity,500);assert.equal(trailing.unit,'g');
