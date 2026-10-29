@@ -21,7 +21,7 @@ Tout le monde peut corriger une prise pendant 24 heures ; l’historique indique
 
 ## La cocotte et les suggestions
 
-Cinq animations sont proposées dans **La maison** : Coucou !, La danse du chef, Cuisiné avec amour, La cuillère magique et À table !. Chaque appareil peut choisir une animation pour l’ouverture, un ajout et une prise. Une prise souhaite toujours « Bon appétit ». Les préférences de réduction des mouvements sont respectées.
+Cinq animations sont proposées dans **La maison** : Coucou !, La danse du chef, Cuisiné avec amour, La cuillère magique et À table !. Chaque appareil peut choisir une animation pour l’ouverture, un ajout et une prise. Une prise de plat souhaite « Bon appétit » ; une prise de légumes souhaite « Bonne cuisine ». Les préférences de réduction des mouvements sont respectées.
 
 La section **Vos idées** permet aux trois profils de déposer une suggestion et de consulter les idées. Le texte complet des nouvelles suggestions apparaît dans une fenêtre du profil EK, à l’ouverture ou pendant son utilisation (actualisation toutes les 30 secondes). Pas de mail ni de notification lorsque l’application est fermée. Les suggestions sont conservées dans le journal et l’onglet Suggestions du classeur.
 
@@ -29,11 +29,19 @@ La section **Vos idées** permet aux trois profils de déposer une suggestion et
 
 La section **Aide** explique l’ajout et la prise en quatre étapes chacun, avec deux GIF illustrés déclenchés volontairement et arrêtables. Les explications écrites restent disponibles sans animation. Les exemples sont fictifs et ne créent aucune donnée dans le stock. Les GIF sont intégrés au client Google, sans hébergeur d’images externe.
 
+## Illustrations et dictée
+
+36 illustrations de plats et 18 de légumes, avec libellés accessibles. La dictée française montre les résultats intermédiaires, remplit aussi le nom sans quantité et accepte les parts, pièces et poids décimaux. Les erreurs et le délai sans réponse sont visibles dans le formulaire. Le champ **Votre phrase dictée ou écrite** permet d’utiliser le micro du clavier du téléphone ; **Remplir les champs avec cette phrase** reprend le texte sans enregistrer le stock automatiquement. Les tests simulent les événements du moteur ; une vérification de la vraie capture audio sur le téléphone reste nécessaire.
+
+## Légumes non cuisinés
+
+Tous les profils peuvent toucher **Ajouter des légumes**, choisir un comptage en pièces, grammes ou kilos (jusqu’à trois décimales), puis indiquer quantité, date de rangement, emplacement et seuil d’alerte dans la même unité. Le filtre **Légumes non cuisinés** les retrouve. **Je me sers** retire une quantité et souhaite bonne cuisine ; l’annulation et l’historique gardent l’unité. Les plats déjà enregistrés restent en portions. Un ajout représente un nouveau lot ; le transfert automatique de légumes vers un plat cuisiné n’est pas effectué.
+
 ## Hébergement et installation
 
-GitHub Pages héberge la page d’entrée installable : https://etiennekepeklian-max.github.io/miam-maman/
+GitHub Pages héberge l’interface complète installable : https://etiennekepeklian-max.github.io/miam-maman/
 
-Le bouton **Ouvrir le stock familial** ouvre l’application exécutée par Google Apps Script. Les plats sont enregistrés dans le classeur Google familial. Une connexion Internet est nécessaire. Les fichiers du service Google sont dans `google-apps-script/`.
+L’interface GitHub communique avec Google Apps Script par une fenêtre intégrée de connexion au stock. La page principale peut utiliser la reconnaissance vocale du navigateur ; la page Google directe ne délègue pas le microphone. La connexion accepte uniquement l’origine GitHub de la famille, un identifiant de page et les opérations prévues, puis applique les règles de stock sur le serveur. Les plats et légumes sont enregistrés dans le même classeur Google familial. Une connexion Internet est nécessaire. Les fichiers du service Google sont dans `google-apps-script/`.
 
 Le workflow **Publier Miam Maman** construit et publie `dist/`. Il exige une variable de dépôt `MIAM_GOOGLE_WEBAPP_URL` contenant l’URL Google définitive terminée par `/exec`. Sans cette variable, il refuse de publier un aperçu local comme stock partagé.
 

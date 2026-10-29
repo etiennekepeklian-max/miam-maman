@@ -7,3 +7,13 @@
 - Aucun emplacement, plat ou suggestion fictif ajouté aux données réelles.
 - 32 fichiers synchronisés sur GitHub ; publication GitHub Actions réussie avant la dernière mise à jour documentaire et du manifeste.
 - Page d’installation vérifiée : https://etiennekepeklian-max.github.io/miam-maman/
+
+## Mise à jour légumes non cuisinés
+
+- 33 tests réussis : pièces, grammes, kilos, précision des retraits et annulations, rejet des unités invalides, compatibilité avec les anciens plats, projection Google Sheet et mêmes droits pour tous.
+- Essai navigateur isolé : ajout de 1,5 kg de carottes, seuil à 0,5 kg, retrait de 0,25 kg puis annulation (retour à 1,5 kg). Aucun essai dans le stock partagé.
+- Version 4 Google en cours de publication, sans changement de classeur ni de droits.
+
+- 36 illustrations de plats et 18 de légumes : toutes acceptées par les règles serveur.
+- Dictée : nom sans quantité, parts, pièces, kilos décimaux et seuils en grammes ; états intermédiaires, erreur dans le formulaire et secours avec micro du clavier. Événements du moteur testés avec simulation ; capture audio réelle à essayer sur le téléphone.
+- Connexion GitHub → Google testée sur les identifiants de page, l’origine et la source des réponses ; HTML Google de connexion valide.
