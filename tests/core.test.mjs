@@ -73,3 +73,26 @@ test('spoken decimal kilos and alert quantities in grams are understood',()=>{
 test('all offered illustrations can be saved with the proper food category',()=>{
   for(const kind of ['dish','vegetable']){assert.ok(c.illustrations[kind].length>=18);for(const item of c.illustrations[kind]){const e=c.command(fixture(),'maison','meal.add',{kind,name:item.label,emoji:item.emoji,unit:kind==='dish'?'portions':'pieces',quantity:2,threshold:1,preparedAt:'2026-10-27',locationId:'loc'},'icon',now);assert.equal(e.data.emoji,item.emoji);}}
 });
+
+test('locations are unique within a level and renamed locations update cards without rewriting history',()=>{
+ let s=fixture();s=perform(s,'maison','location.add',{name:'Congélateur',level:'Rez-de-chaussée'},'ground');s=perform(s,'maison','location.add',{name:'Congélateur',level:'Sous-sol'},'basement');
+ assert.throws(()=>c.command(s,'maison','location.add',{name:'congelateur',level:'Sous-sol'},'dup',now),/existe/);
+ s=perform(s,'maison','location.edit',{id:'loc',name:'Tiroir de la commode',level:'Sous-sol'},'rename');assert.equal(s.meals[0].locationName,'Tiroir de la commode');assert.equal(s.meals[0].locationLevel,'Sous-sol');assert.equal(s.events.find(e=>e.id==='meal').data.locationName,'Notre emplacement');
+ const ambiguous=c.parseVoice('Deux portions de soupe dans Congélateur',s.locations);assert.equal(ambiguous.locationId,undefined);assert.equal(ambiguous.locationAmbiguous,true);
+ assert.equal(c.parseVoice('Deux portions de soupe dans Congélateur au sous-sol',s.locations).locationId,'basement');
+});
+test('all metadata and quantity can be edited without overwriting a concurrent take',()=>{
+ let s=fixture();const payload={id:'meal',name:'Soupe maison',emoji:'art:soup',people:4,comments:'Sans sel\nAvec des pâtes',preparedAt:'2026-10-26',locationId:'loc',detail:'Boîte',threshold:3,quantity:6,expectedQuantity:2,expectedUnit:'portions'};
+ s=perform(s,'maison','meal.edit',payload,'full-edit');assert.equal(s.meals[0].name,'Soupe maison');assert.equal(s.meals[0].quantity,6);assert.equal(s.meals[0].people,4);assert.equal(s.meals[0].emoji,'art:soup');assert.equal(s.meals[0].comments,payload.comments);assert.equal(s.events.at(-1).data.quantityDelta,4);
+ const stale={...payload,expectedQuantity:6,quantity:8};s=perform(s,'maison','meal.take',{id:'meal',quantity:1},'concurrent');assert.throws(()=>c.command(s,'maison','meal.edit',stale,'stale-edit',now),/stock a changé/);assert.equal(s.meals[0].quantity,5);
+ s=perform(s,'maison','meal.edit',{id:'meal',locationId:'loc',threshold:1,detail:''},'old-client');assert.equal(s.meals[0].comments,payload.comments);assert.equal(s.meals[0].quantity,5);
+});
+test('meat and new stock keep units and separate preparation dates',()=>{
+ let s=fixture();s=perform(s,'maison','meal.add',{name:'Jambon',kind:'meat',unit:'paquets',quantity:3,threshold:1,preparedAt:'2026-10-27',locationId:'loc',emoji:'art:ham',comments:'Pour les croques'},'ham');assert.equal(s.meals[1].kind,'meat');assert.equal(c.unit(s.meals[1]),'paquets');
+ s=perform(s,'maison','meal.add',{name:'Lasagnes',quantity:4,threshold:1,preparedAt:'2026-10-26',locationId:'loc'},'new-batch');assert.equal(s.meals[0].quantity,2);assert.equal(s.meals[2].quantity,4);assert.equal(s.meals[0].preparedAt,'2026-10-27');assert.equal(s.meals[2].preparedAt,'2026-10-26');
+ assert.throws(()=>c.command(s,'maison','meal.edit',{id:'ham',locationId:'loc',threshold:1,people:0},'bad-people',now));
+});
+test('undo converts weights after a unit change and cannot exceed the stock limit',()=>{
+ let s=fixture();s=perform(s,'maison','meal.add',{name:'Carottes',kind:'vegetable',unit:'kg',quantity:2,threshold:0.5,preparedAt:'2026-10-27',locationId:'loc'},'veg');s=perform(s,'maison','meal.take',{id:'veg',quantity:0.5},'take-veg');s=perform(s,'maison','meal.edit',{id:'veg',locationId:'loc',unit:'g',quantity:1500,expectedQuantity:1.5,expectedUnit:'kg',threshold:500},'change-unit');s=perform(s,'maison','meal.undo',{eventId:'take-veg'},'undo-g');assert.equal(s.meals[1].quantity,2000);
+ let r=fixture();r=perform(r,'maison','meal.take',{id:'meal',quantity:1},'take');r=perform(r,'maison','meal.edit',{id:'meal',locationId:'loc',quantity:999,expectedQuantity:1,expectedUnit:'portions',threshold:1},'correct');assert.throws(()=>c.command(r,'maison','meal.undo',{eventId:'take'},'overflow',now));
+});
