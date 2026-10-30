@@ -2,8 +2,8 @@
 var SPREADSHEET_ID = '1_yC0fdQKQWo84xmK01QVIOPFqHTZF5Ve0mXycFqk3_A';
 var OWNER_EMAIL = 'etienne.kepeklian@gmail.com';
 var HEADERS = {
-  Stock:['ID préparation','Plat','Portions','Emplacement','Repère','Préparé le','Seuil','État','Type','Unité'],
-  Emplacements:['ID emplacement','Nom'],
+  Stock:['ID préparation','Plat','Portions','Emplacement','Repère','Préparé le','Seuil','État','Type','Unité','Nombre de personnes','Commentaires','Niveau'],
+  Emplacements:['ID emplacement','Nom','Niveau'],
   Journal:['Horodatage','ID opération','Action','Compte','ID objet','Nom','Emplacement','Variation portions','Seuil','Préparé le','Repère','Opération annulée','Données événement'],
   Comptes:['Compte','Utilisation'],
   Suggestions:['ID suggestion','Date','Profil','Titre','Suggestion','Lue par EK']
@@ -26,7 +26,7 @@ function afficherLesProfils() {
 }
 function profilesSheet_() {
   var ss=sheet_();
-  Object.keys(HEADERS).forEach(function(name){var s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(!s.getLastRow())s.appendRow(HEADERS[name]);else if(name==='Stock')s.getRange(1,1,1,HEADERS.Stock.length).setValues([HEADERS.Stock]);});
+  Object.keys(HEADERS).forEach(function(name){var s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(!s.getLastRow())s.appendRow(HEADERS[name]);else if(name==='Stock'||name==='Emplacements')s.getRange(1,1,1,HEADERS[name].length).setValues([HEADERS[name]]);});
   var rows=[['MLK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions'],['GK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions'],['EK','Ajouter les plats, gérer les emplacements et les seuils, prendre des portions']];
   var sh=ss.getSheetByName('Comptes');
   if(JSON.stringify(sh.getRange(2,1,3,2).getValues())!==JSON.stringify(rows)){
@@ -62,15 +62,15 @@ function events_() {
 function readState_() { return MiamCore.replay(events_()); }
 function literal_(v) { var s=String(v==null?'':v);return /^[=+\-@\t\r]/.test(s)?"'"+s:s; }
 function append_(e) {
-  var d=e.data,delta=e.action==='meal.take'?-d.quantity:e.action==='meal.add'||e.action==='meal.undo'?d.quantity:'';
+  var d=e.data,delta=e.action==='meal.take'?-d.quantity:e.action==='meal.add'||e.action==='meal.undo'?d.quantity:e.action==='meal.edit'&&typeof d.quantityDelta==='number'?d.quantityDelta:'';
   sheet_().getSheetByName('Journal').appendRow([e.at,e.id,e.action,e.profile||e.role,d.id,literal_(d.name),literal_(d.locationName),delta,d.threshold==null?'':d.threshold,d.preparedAt||'',literal_(d.detail),d.eventId||'',JSON.stringify(e)]);
   SpreadsheetApp.flush();
 }
 function project_(s) {
   var ss=sheet_();
   function write(name,rows){var sh=ss.getSheetByName(name);var size=HEADERS[name].length;if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,size).clearContent();if(rows.length){if(sh.getMaxRows()<rows.length+1)sh.insertRowsAfter(sh.getMaxRows(),rows.length+1-sh.getMaxRows());sh.getRange(2,1,rows.length,size).setValues(rows);}}
-  write('Stock',s.meals.map(function(m){return [m.id,literal_(m.name),m.quantity,literal_(m.locationName),literal_(m.detail),m.preparedAt,m.threshold,m.quantity===0?'Terminé':m.quantity<=m.threshold?'Bientôt fini':'Disponible',m.kind==='vegetable'?'Légumes non cuisinés':'Plat préparé',MiamCore.unit(m)];}));
-  write('Emplacements',s.locations.map(function(l){return [l.id,literal_(l.name)];}));
+  write('Stock',s.meals.map(function(m){return [m.id,literal_(m.name),m.quantity,literal_(m.locationName),literal_(m.detail),m.preparedAt,m.threshold,m.quantity===0?'Terminé':m.quantity<=m.threshold?'Bientôt fini':'Disponible',m.kind==='vegetable'?'Légumes non cuisinés':m.kind==='meat'?'Viande':'Plat préparé',MiamCore.unit(m),m.people||'',literal_(m.comments),literal_(m.locationLevel)];}));
+  write('Emplacements',s.locations.map(function(l){return [l.id,literal_(l.name),literal_(l.level)];}));
   write('Suggestions',s.suggestions.map(function(item){return [item.id,item.at,item.author,literal_(item.title),literal_(item.text),item.seenBy.indexOf('EK')>=0?'Oui':'Non'];}));
   SpreadsheetApp.flush();
 }
@@ -102,7 +102,7 @@ function bridge_(nonce) {
   var source='<!doctype html><html><head><meta charset="utf-8"></head><body><script>'+ 
     'var nonce='+JSON.stringify(nonce)+',parentOrigin='+JSON.stringify(origin)+';'+
     'window.addEventListener("message",function(e){var d=e.data;if(e.source!==window.top||e.origin!==parentOrigin||!d||d.type!=="miam.rpc"||d.nonce!==nonce||!Number.isSafeInteger(d.id)||d.id<1)return;'+
-    'var allowed=["login","logout","state","location.add","location.delete","meal.add","meal.edit","meal.take","meal.undo","suggestion.add","suggestion.seen"];if(allowed.indexOf(d.action)<0||!d.args||typeof d.args!=="object")return;'+
+    'var allowed=["login","logout","state","location.add","location.edit","location.delete","meal.add","meal.edit","meal.take","meal.undo","suggestion.add","suggestion.seen"];if(allowed.indexOf(d.action)<0||!d.args||typeof d.args!=="object")return;'+
     'function reply(value){window.top.postMessage({type:"miam.result",nonce:nonce,id:d.id,result:value},parentOrigin);}'+
     'google.script.run.withSuccessHandler(reply).withFailureHandler(function(){window.top.postMessage({type:"miam.result",nonce:nonce,id:d.id,failure:true},parentOrigin);}).rpc(d.action,d.args);});'+
     'window.top.postMessage({type:"miam.ready",nonce:nonce},parentOrigin);'+
