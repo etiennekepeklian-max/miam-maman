@@ -19,3 +19,12 @@
 - Connexion GitHub → Google testée sur les identifiants de page, l’origine et la source des réponses ; HTML Google de connexion valide.
 
 - Dans le formulaire publié (sans enregistrement réel) : 18 illustrations de légumes, phrase « 1,5 kilos de carottes, alerte à 500 grammes » reprise en kg avec seuil 0,5. La vraie capture audio n’a pas pu être exercée depuis le navigateur de vérification.
+
+## Mise à jour niveaux, fiches, Canva et hors connexion
+
+- 41 tests : niveaux, compatibilité des anciennes fiches, champs complets, quantité concurrente, viande, lots distincts, conservation des auteurs hors ligne, reprise après redémarrage, retour perdu sans doublon et conflits sans stock négatif.
+- Parcours navigateur isolé avec vrai IndexedDB : deux niveaux créés manuellement, ajout hors connexion de 3 paquets de lardons avec personnes/commentaires, rechargement, retrait de 1 paquet, nouveau rechargement, retour simulé du réseau, confirmation « Stock partagé à jour » et stock de 2 paquets.
+- Modification dans la copie de test : nom, illustration, niveau et quantité ; formulaire de réapprovisionnement prérempli, quantité nouvelle à 1 et date propre. 25 illustrations Canva inspectées à l’écran.
+- Aucun essai dans le classeur réel. La coupure réseau du téléphone en cave et la vraie capture audio restent à essayer sur l’appareil.
+
+- Service Google version 6 publié sur le déploiement existant le 30 octobre 2026, accès et URL inchangés.

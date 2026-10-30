@@ -31,7 +31,7 @@ La section **Aide** explique l’ajout et la prise en quatre étapes chacun, ave
 
 ## Illustrations et dictée
 
-36 illustrations de plats et 18 de légumes, avec libellés accessibles. La dictée française montre les résultats intermédiaires, remplit aussi le nom sans quantité et accepte les parts, pièces et poids décimaux. Les erreurs et le délai sans réponse sont visibles dans le formulaire. Le champ **Votre phrase dictée ou écrite** permet d’utiliser le micro du clavier du téléphone ; **Remplir les champs avec cette phrase** reprend le texte sans enregistrer le stock automatiquement. Les tests simulent les événements du moteur ; une vérification de la vraie capture audio sur le téléphone reste nécessaire.
+25 illustrations génériques créées avec Canva, communes aux plats, légumes et viandes, avec libellés accessibles. Les anciens choix restent compatibles. La dictée française montre les résultats intermédiaires, remplit aussi le nom sans quantité et accepte les parts, pièces et poids décimaux. Les erreurs et le délai sans réponse sont visibles dans le formulaire. Le champ **Votre phrase dictée ou écrite** permet d’utiliser le micro du clavier du téléphone ; **Remplir les champs avec cette phrase** reprend le texte sans enregistrer le stock automatiquement. Les tests simulent les événements du moteur ; une vérification de la vraie capture audio sur le téléphone reste nécessaire.
 
 ## Légumes non cuisinés
 
@@ -41,7 +41,7 @@ Tous les profils peuvent toucher **Ajouter des légumes**, choisir un comptage e
 
 GitHub Pages héberge l’interface complète installable : https://etiennekepeklian-max.github.io/miam-maman/
 
-L’interface GitHub communique avec Google Apps Script par une fenêtre intégrée de connexion au stock. La page principale peut utiliser la reconnaissance vocale du navigateur ; la page Google directe ne délègue pas le microphone. La connexion accepte uniquement l’origine GitHub de la famille, un identifiant de page et les opérations prévues, puis applique les règles de stock sur le serveur. Les plats et légumes sont enregistrés dans le même classeur Google familial. Une connexion Internet est nécessaire. Les fichiers du service Google sont dans `google-apps-script/`.
+L’interface GitHub communique avec Google Apps Script par une fenêtre intégrée de connexion au stock. La page principale peut utiliser la reconnaissance vocale du navigateur ; la page Google directe ne délègue pas le microphone. La connexion accepte uniquement l’origine GitHub de la famille, un identifiant de page et les opérations prévues, puis applique les règles de stock sur le serveur. Les plats et légumes sont enregistrés dans le même classeur Google familial. Une première ouverture avec Internet permet de conserver le stock sur le téléphone. Les fichiers du service Google sont dans `google-apps-script/`.
 
 Le workflow **Publier Miam Maman** construit et publie `dist/`. Il exige une variable de dépôt `MIAM_GOOGLE_WEBAPP_URL` contenant l’URL Google définitive terminée par `/exec`. Sans cette variable, il refuse de publier un aperçu local comme stock partagé.
 
@@ -61,3 +61,17 @@ npm run build
 `src/` contient le client, les styles et les règles communes. Le build produit `dist/` et les fichiers intégrés pour Apps Script. Sans URL Google, le build manuel produit un aperçu local clairement identifié. Le journal du Google Sheet est la source des données ; Stock et Emplacements sont ses vues reconstruites. Ne pas modifier ces onglets manuellement pour ajuster les portions.
 
 Limites : petit usage familial, journal limité à 20 000 événements, actualisation toutes les 30 secondes lorsque l’application est visible. Les sessions techniques temporaires conservent le profil choisi, sans en vérifier l’identité.
+
+## Niveaux, modifications et réapprovisionnement
+
+Les emplacements ont un niveau facultatif : rez-de-chaussée, sous-sol ou nom libre. Le choix d’un rangement se fait en deux étapes : niveau puis emplacement. Les anciens rangements restent sous « Niveau à préciser ». Aucun emplacement n’est ajouté automatiquement. La maison permet de renommer et reclasser un rangement, et de le supprimer lorsqu’il est vide.
+
+Toutes les fiches permettent de modifier nom, illustration, date, quantité, unité compatible, emplacement, repère, seuil, nombre de personnes facultatif et commentaires. Une correction de quantité vérifie le stock attendu pour éviter d’écraser une prise concurrente. « + Ajouter du stock » reprend les informations dans un nouveau lot avec sa propre date ; l’ancien lot est conservé, y compris avant la rupture.
+
+La catégorie Viande accepte les pièces, paquets, grammes et kilos pour la viande, le jambon et les lardons.
+
+## Hors connexion
+
+Après une première ouverture avec Internet et connexion au stock partagé, l’application GitHub conserve son interface dans le service worker et le dernier stock dans IndexedDB. Les actions sont écrites durablement avant l’envoi, avec leur auteur et leur identifiant stable. Elles survivent au rechargement et sont envoyées dans l’ordre au retour du réseau, lorsque l’application est ouverte ou à sa prochaine ouverture. Le serveur Google valide chaque opération et reste la source du stock partagé.
+
+Un retour perdu n’entraîne pas de double retrait. Un conflit (stock insuffisant, correction concurrente, emplacement occupé) bloque la suite et s’affiche explicitement. Les envois rejetés peuvent être réessayés ou retirés après vérification. Un envoi sans réponse ne peut pas être supprimé arbitrairement, car il peut avoir déjà été reçu. Le stock hors ligne est le dernier connu de cet appareil, pas un stock partagé en temps réel. Ne pas effacer les données du navigateur avant synchronisation. La dictée peut nécessiter Internet ; le clavier reste disponible. La page Google de secours nécessite Internet.
