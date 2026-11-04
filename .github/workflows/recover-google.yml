@@ -51,3 +51,5 @@ jobs:
           test "$(git rev-parse origin/main)" = "52c1e56bfa1f46f231654aa9243f814069bb20f4"
           git push origin HEAD:main
           gh workflow run pages.yml --ref main
+
+# Retry with correctly typed isolated HTML server.
