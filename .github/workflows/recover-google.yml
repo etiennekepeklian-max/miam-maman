@@ -1,0 +1,39 @@
+name: Recuperer la version Google
+on:
+  push:
+    branches: [codex/recover-v7-20261104]
+    paths: [.github/workflows/recover-google.yml]
+permissions:
+  contents: write
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lire uniquement le client Google public
+        env:
+          MIAM_URL: ${{ vars.MIAM_GOOGLE_WEBAPP_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs/promises';
+          const url=process.env.MIAM_URL;
+          if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url||''))throw Error('URL Google absente');
+          const response=await fetch(url);
+          if(!response.ok)throw Error('Google HTTP '+response.status);
+          const html=await response.text();
+          await fs.mkdir('recovery',{recursive:true});
+          await fs.writeFile('recovery/google-response.html',html);
+          console.log('HTTP',response.status,'bytes',Buffer.byteLength(html));
+          console.log('IFRAMES',html.match(/<iframe[^>]+>/g));
+          console.log('TAIL',html.slice(-4000).replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g,'[image]'));
+          NODE
+      - name: Conserver le client sur la branche de reprise
+        run: |
+          git config user.name "Miam Maman recovery"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add recovery
+          git diff --cached --quiet || git commit -m "Recover published Google client without changing stock"
+          git push
