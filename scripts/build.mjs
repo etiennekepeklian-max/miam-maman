@@ -11,7 +11,7 @@ new Script(app,{filename:'src/app.js'});
 new Script(transport,{filename:'src/transport.js'});
 new Script(offline,{filename:'src/offline.js'});
 const iconAtlas=await fs.readFile(new URL('src/food-icons.webp',root));
-let html=template.replace('/*__STYLE__*/',css).replace('/*__CORE__*/',core).replace('/*__APP__*/',app).replace('/*__TRANSPORT__*/',transport).replace('/*__OFFLINE__*/',offline).replaceAll('__FOOD_ICONS__','data:image/webp;base64,'+iconAtlas.toString('base64')).replaceAll('__MASCOT__','data:image/webp;base64,'+mascot.toString('base64'));
+let html=template.replace('/*__STYLE__*/',()=>css).replace('/*__CORE__*/',()=>core).replace('/*__APP__*/',()=>app).replace('/*__TRANSPORT__*/',()=>transport).replace('/*__OFFLINE__*/',()=>offline).replaceAll('__FOOD_ICONS__','data:image/webp;base64,'+iconAtlas.toString('base64')).replaceAll('__MASCOT__','data:image/webp;base64,'+mascot.toString('base64'));
 for(const kind of ['add','take'])for(const ext of ['png','gif']){const bytes=await fs.readFile(new URL('src/help-'+kind+'.'+ext,root));html=html.replaceAll('__HELP_'+kind.toUpperCase()+'_'+ext.toUpperCase()+'__','data:image/'+ext+';base64,'+bytes.toString('base64'));}
 if(/__HELP_[A-Z_]+__/.test(html))throw new Error('Un guide d’aide manque au build.');
 await fs.mkdir(new URL('dist/',root),{recursive:true});
