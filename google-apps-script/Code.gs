@@ -85,7 +85,7 @@ function rpc(action,args) {
     try {
       var s=readState_();
       if(action==='state')return {ok:true,state:s};
-      if(!args.payload||JSON.stringify(args.payload).length>4000)throw new Error('Formulaire invalide.');
+      if(!args.payload||JSON.stringify(args.payload).length>(action==='stock.batch'?12000:4000))throw new Error('Formulaire invalide.');
       var e=MiamCore.command(s,session.role,action,args.payload,args.id,new Date().toISOString(),session.profile);
       if(e){append_(e);s=MiamCore.replay(s.events.concat([e]));}
       // The journal is authoritative. A projection error must not duplicate a meal take.
@@ -102,7 +102,7 @@ function bridge_(nonce) {
   var source='<!doctype html><html><head><meta charset="utf-8"></head><body><script>'+ 
     'var nonce='+JSON.stringify(nonce)+',parentOrigin='+JSON.stringify(origin)+';'+
     'window.addEventListener("message",function(e){var d=e.data;if(e.source!==window.top||e.origin!==parentOrigin||!d||d.type!=="miam.rpc"||d.nonce!==nonce||!Number.isSafeInteger(d.id)||d.id<1)return;'+
-    'var allowed=["login","logout","state","location.add","location.edit","location.delete","meal.add","meal.edit","meal.take","meal.undo","suggestion.add","suggestion.seen"];if(allowed.indexOf(d.action)<0||!d.args||typeof d.args!=="object")return;'+
+    'var allowed=["login","logout","state","location.add","location.edit","location.delete","meal.add","meal.edit","meal.take","meal.undo","suggestion.add","suggestion.seen","category.add","category.edit","category.delete","stock.batch","meal.move","shopping.add","shopping.check","shopping.delete"];if(allowed.indexOf(d.action)<0||!d.args||typeof d.args!=="object")return;'+
     'function reply(value){window.top.postMessage({type:"miam.result",nonce:nonce,id:d.id,result:value},parentOrigin);}'+
     'google.script.run.withSuccessHandler(reply).withFailureHandler(function(){window.top.postMessage({type:"miam.result",nonce:nonce,id:d.id,failure:true},parentOrigin);}).rpc(d.action,d.args);});'+
     'window.top.postMessage({type:"miam.ready",nonce:nonce},parentOrigin);'+

@@ -1,4 +1,3 @@
-/* Bridge from the installable GitHub app to the existing Google Sheet service. */
 var MiamBridge=(function(){
   'use strict';
   var nonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),function(b){return b.toString(16).padStart(2,'0');}).join('');

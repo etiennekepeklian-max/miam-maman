@@ -1,4 +1,3 @@
-/* Shared domain rules: browser preview and Google Apps Script. */
 var MiamCore = (function () {
   'use strict';
   var PROFILES = [{id:'MLK',role:'maison',label:'MLK'},{id:'GK',role:'maison',label:'GK'},{id:'EK',role:'maison',label:'EK'}];
@@ -21,9 +20,14 @@ var MiamCore = (function () {
   function optionalText(v,max){if(v==null||v==='')return '';return text(v,max);}
   function people(v){return v==null||v===''?null:integer(v,1,999);}
   function validDate(value,now){var date=text(value,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(Date.parse(date))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)fail('La date est invalide.');if(date>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Paris'}).format(new Date(now)))fail('La date ne peut pas être dans le futur.');return date;}
-  function allowedUnits(kind){return kind==='dish'?['portions']:kind==='meat'?['pieces','paquets','g','kg']:['pieces','g','kg'];}
+  function allowedUnits(kind){return kind==='dish'?['portions']:kind==='meat'?['pieces','paquets','g','kg']:kind==='other'?['portions','pieces','paquets','g','kg']:['pieces','g','kg'];}
   function rounded(v){return Math.round(v*1000)/1000;}
-  function empty() { return {locations: [], meals: [], events: [], suggestions: []}; }
+  function empty() { return {locations: [], meals: [], events: [], suggestions: [], categories:[{id:'dish',name:'Plats préparés',emoji:'art:pot'},{id:'vegetable',name:'Légumes non cuisinés',emoji:'art:vegetables'},{id:'meat',name:'Viande, lardons et jambon',emoji:'art:meat'}],shopping:[]}; }
+  function categoryId(m){return m.categoryId||m.kind||'dish';}
+  function categoryName(s,m){var c=s.categories.find(function(c){return c.id===categoryId(m);});return c?c.name:'À reclasser';}
+  function eventsOf(s){var out=[];function add(e){if(e.action==='stock.batch')e.data.items.forEach(add);else out.push(e);}s.events.forEach(add);return out;}
+  function groups(s,locationId,includeEmpty){var map={};s.meals.forEach(function(m){if(locationId&&m.locationId!==locationId)return;if(!includeEmpty&&m.quantity<=0)return;var k=JSON.stringify([m.locationId,categoryId(m),norm(m.name),unit(m)]),g=map[k];if(!g)g=map[k]={id:m.id,name:m.name,emoji:m.emoji,categoryId:categoryId(m),locationId:m.locationId,unit:unit(m),quantity:0,lots:[],threshold:0};g.quantity=rounded(g.quantity+m.quantity);g.threshold=Math.max(g.threshold,m.threshold);g.lots.push(m);});return Object.keys(map).map(function(k){var g=map[k];g.lots.sort(function(a,b){return a.preparedAt.localeCompare(b.preparedAt)||a.id.localeCompare(b.id);});return g;}).sort(function(a,b){return a.name.localeCompare(b.name,'fr');});}
+
   function fail(message) { throw new Error(message); }
   function text(value, max) {
     if (typeof value !== 'string' || !value.trim() || value.trim().length > max) fail('Merci de compléter les champs avec un texte valide.');
@@ -37,31 +41,61 @@ var MiamCore = (function () {
   function norm(value) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   function replay(events) {
     var s = empty();
-    events.forEach(function(e) {
+    function apply(e) {
+      if(e.action==='stock.batch'){e.data.items.forEach(apply);return;}
       var d = e.data, m = s.meals.find(function(x) { return x.id === d.id; });
       if (e.action === 'location.add') s.locations.push({id: d.id, name: d.name,level:d.level||''});
       if(e.action==='location.edit'){var l=s.locations.find(function(x){return x.id===d.id;});if(l){l.name=d.name;l.level=d.level||'';s.meals.forEach(function(x){if(x.locationId===l.id){x.locationName=l.name;x.locationLevel=l.level;}});}}
-      if (e.action === 'location.delete') s.locations = s.locations.filter(function(x) { return x.id !== d.id; });
+      if (e.action === 'location.delete') {if(d.replacement)s.meals.forEach(function(m){if(m.locationId===d.id){m.locationId=d.replacement.id;m.locationName=d.replacement.name;m.locationLevel=d.replacement.level||'';}});s.locations = s.locations.filter(function(x) { return x.id !== d.id; });}
+      if(e.action==='category.add')s.categories.push({id:d.id,name:d.name,emoji:d.emoji});
+      if(e.action==='category.edit'){var cat=s.categories.find(function(x){return x.id===d.id;});if(cat){cat.name=d.name;cat.emoji=d.emoji;}}
+      if(e.action==='category.delete'){s.meals.forEach(function(m){if(categoryId(m)===d.id)m.categoryId=d.replacementId;});s.categories=s.categories.filter(function(c){return c.id!==d.id;});}
+      if(e.action==='shopping.add')s.shopping.push({id:d.id,name:d.name,amount:d.amount,checked:false});
+      if(e.action==='shopping.check'){var item=s.shopping.find(function(x){return x.id===d.id;});if(item)item.checked=d.checked;}
+      if(e.action==='shopping.delete')s.shopping=s.shopping.filter(function(x){return x.id!==d.id;});
+      if(e.action==='meal.move'&&m){m.quantity=rounded(m.quantity-d.quantity);s.meals.push(Object.assign({},d.moved));}
+
       if (e.action === 'meal.add') s.meals.push(Object.assign({}, d));
       if (e.action === 'meal.take' && m) m.quantity = rounded(m.quantity-d.quantity);
-      if (e.action === 'meal.edit' && m) {Object.assign(m,{locationId:d.locationId,locationName:d.locationName,detail:d.detail,threshold:d.threshold});['name','locationLevel','emoji','people','comments','preparedAt','quantity','unit'].forEach(function(k){if(Object.prototype.hasOwnProperty.call(d,k))m[k]=d[k];});}
+      if (e.action === 'meal.edit' && m) {Object.assign(m,{locationId:d.locationId,locationName:d.locationName,detail:d.detail,threshold:d.threshold});['name','locationLevel','emoji','people','comments','preparedAt','quantity','unit','categoryId'].forEach(function(k){if(Object.prototype.hasOwnProperty.call(d,k))m[k]=d[k];});}
       if (e.action === 'meal.undo' && m) m.quantity = rounded(m.quantity+d.quantity);
       if (e.action === 'suggestion.add') s.suggestions.push({id:d.id,title:d.name,text:d.text,author:e.profile,at:e.at,seenBy:e.profile==='EK'?['EK']:[]});
       if (e.action === 'suggestion.seen') s.suggestions.forEach(function(item){if(d.ids.indexOf(item.id)>=0 && item.seenBy.indexOf(e.profile)<0)item.seenBy.push(e.profile);});
-      s.events.push(e);
-    });
+    }
+    events.forEach(function(e){apply(e);s.events.push(e);});
     return s;
   }
   function command(s, role, action, args, id, now, actor) {
     if (role !== 'maison' && role !== 'maman' && role !== 'famille') fail('Connexion nécessaire.');
     key(id);
-    var duplicate = s.events.find(function(e) { return e.id === id; });
+    var duplicate = s.events.concat(eventsOf(s)).find(function(e) { return e.id === id; });
     if (duplicate) {
       if ((duplicate.profile || null) !== (actor || null) || duplicate.role !== role || duplicate.action !== action || duplicate.request !== JSON.stringify(args)) fail('Cette opération existe déjà avec un contenu différent.');
       return null;
     }
     var d, meal, loc;
-    if (action === 'suggestion.add') {
+    if(action==='stock.batch'){
+      if(!Array.isArray(args.items)||!args.items.length||args.items.length>10||JSON.stringify(args).length>12000)fail('Enregistrez au maximum 10 lignes à la fois, avec des commentaires courts.');
+      var built=[],virtual=s;
+      args.items.forEach(function(item,i){if(!item||['meal.add','meal.edit','meal.take','meal.move','shopping.add'].indexOf(item.action)<0)fail('Action groupée invalide.');try{var child=command(virtual,role,item.action,item.payload,id+':'+i,now,actor);if(child){built.push(child);virtual=replay(s.events.concat(built));}}catch(e){fail('Ligne '+(i+1)+' : '+e.message);}});
+      d={id:id,name:'Enregistrement de '+built.length+' ligne(s)',items:built};
+    } else if(action==='category.add'||action==='category.edit'){
+      var category=action==='category.edit'?s.categories.find(function(c){return c.id===args.id;}):null;
+      if(action==='category.edit'&&!category)fail('Catégorie introuvable.');
+      var categoryTitle=text(args.name,80),catId=category?category.id:id;
+      if(s.categories.some(function(c){return c.id!==catId&&norm(c.name)===norm(categoryTitle);}))fail('Cette catégorie existe déjà.');
+      if(args.emoji!==undefined&&!validIcon(args.emoji))fail('Choisissez une illustration proposée.');
+      d={id:catId,name:categoryTitle,emoji:args.emoji||(category?category.emoji:'art:plate')};
+    } else if(action==='category.delete'){
+      var deleted=s.categories.find(function(c){return c.id===args.id;}),replacement=s.categories.find(function(c){return c.id===args.replacementId&&c.id!==args.id;});
+      if(!deleted)fail('Catégorie introuvable.');if(s.categories.length<2)fail('Conservez au moins une catégorie. Créez-en une autre avant de supprimer celle-ci.');
+      if(s.meals.some(function(m){return categoryId(m)===deleted.id;})&&!replacement)fail('Choisissez une autre catégorie pour les produits existants.');
+      d={id:deleted.id,name:deleted.name,replacementId:replacement?replacement.id:null};
+    } else if(action==='shopping.add'){
+      var shoppingName=text(args.name,100);if(s.shopping.some(function(x){return !x.checked&&norm(x.name)===norm(shoppingName);}))fail('Ce produit est déjà dans la liste de courses.');d={id:id,name:shoppingName,amount:optionalText(args.amount,80)};
+    } else if(action==='shopping.check'||action==='shopping.delete'){
+      var shopping=s.shopping.find(function(x){return x.id===args.id;});if(!shopping)fail('Produit de la liste de courses introuvable.');if(action==='shopping.check'&&typeof args.checked!=='boolean')fail('Choix invalide.');d={id:shopping.id,name:shopping.name,checked:args.checked===true};
+    } else if (action === 'suggestion.add') {
       profile(actor);
       d = {id:id,name:text(args.title||'Une idée pour l’appli',80),text:text(args.text,1000)};
     } else if (action === 'suggestion.seen') {
@@ -82,15 +116,20 @@ var MiamCore = (function () {
     } else if (action === 'location.delete') {
       loc = s.locations.find(function(x) { return x.id === args.id; });
       if (!loc) fail('Cet emplacement a déjà été supprimé.');
-      if (s.meals.some(function(x) { return x.locationId === args.id && x.quantity > 0; })) fail('Déplacez d’abord les plats encore stockés ici.');
-      d = {id:loc.id, name:loc.name};
+      var destination=s.locations.find(function(l){return l.id===args.replacementId&&l.id!==loc.id;});
+      if (s.meals.some(function(x) { return x.locationId === args.id && x.quantity > 0; })&&!destination) fail('Déplacez d’abord les plats encore stockés ici.');
+      d = {id:loc.id, name:loc.name,replacement:destination?Object.assign({},destination):null};
     } else if (action === 'meal.add') {
       loc = s.locations.find(function(x) { return x.id === args.locationId; });
       if (!loc) fail('Créez ou choisissez un emplacement avant d’enregistrer le plat.');
       var kind=args.kind||'dish',u=args.unit||(kind==='dish'?'portions':'pieces');
-      if(['dish','vegetable','meat'].indexOf(kind)<0 || allowedUnits(kind).indexOf(u)<0)fail('Type ou unité invalide.');
+      if(['dish','vegetable','meat','other'].indexOf(kind)<0 || allowedUnits(kind).indexOf(u)<0)fail('Type ou unité invalide.');
+      var category=args.categoryId||kind;if(!s.categories.some(function(c){return c.id===category;}))fail('Choisissez une catégorie existante.');
       var date=validDate(args.preparedAt,now);
-      d = {id:id, name:text(args.name,100), kind:kind,unit:u,quantity:amount(args.quantity,u,false), threshold:amount(args.threshold,u,true), locationId:loc.id, locationName:loc.name,locationLevel:loc.level||'',people:people(args.people),comments:optionalText(args.comments,1000), detail:String(args.detail || '').trim().slice(0,120), preparedAt:date, emoji:validIcon(args.emoji)?args.emoji:ILLUSTRATIONS[kind][0].emoji};
+      d = {id:id, name:text(args.name,100), kind:kind,categoryId:category,unit:u,quantity:amount(args.quantity,u,false), threshold:amount(args.threshold,u,true), locationId:loc.id, locationName:loc.name,locationLevel:loc.level||'',people:people(args.people),comments:optionalText(args.comments,1000), detail:String(args.detail || '').trim().slice(0,120), preparedAt:date, emoji:validIcon(args.emoji)?args.emoji:(ILLUSTRATIONS[kind]||ILLUSTRATIONS.dish)[0].emoji};
+    } else if(action==='meal.move'){
+      meal=s.meals.find(function(m){return m.id===args.id;});loc=s.locations.find(function(l){return l.id===args.locationId;});if(!meal||!loc)fail('Le produit ou le nouvel emplacement est introuvable.');if(meal.locationId===loc.id)fail('Choisissez un autre emplacement.');var movedQuantity=amount(args.quantity,unit(meal),false);if(movedQuantity>meal.quantity)fail('Il ne reste que '+meal.quantity+' '+unit(meal)+'. Actualisez le stock.');
+      d={id:meal.id,name:meal.name,quantity:movedQuantity,unit:unit(meal),locationName:meal.locationName,moved:Object.assign({},meal,{id:id+':lot',quantity:movedQuantity,locationId:loc.id,locationName:loc.name,locationLevel:loc.level||''})};
     } else if (action === 'meal.take') {
       meal = s.meals.find(function(x) { return x.id === args.id; });
       if (!meal) fail('Ce plat est introuvable.');
@@ -106,14 +145,15 @@ var MiamCore = (function () {
       if(nextUnit!==currentUnit&&args.quantity===undefined)fail('Indiquez la quantité dans la nouvelle unité.');
       d={id:meal.id,name:args.name===undefined?meal.name:text(args.name,100),locationId:loc.id,locationName:loc.name,locationLevel:loc.level||'',detail:String(args.detail||'').trim().slice(0,120),threshold:amount(args.threshold,nextUnit,true)};
       if(args.quantity!==undefined){if(args.expectedQuantity!==meal.quantity||args.expectedUnit!==currentUnit)fail('Le stock a changé depuis l’ouverture de la fiche. Fermez-la puis ouvrez-la à nouveau avant de corriger la quantité.');d.quantity=amount(args.quantity,nextUnit,true);d.quantityDelta=nextUnit===currentUnit?rounded(d.quantity-meal.quantity):null;d.unit=nextUnit;}
+      if(args.categoryId!==undefined){if(!s.categories.some(function(c){return c.id===args.categoryId;}))fail('Choisissez une catégorie existante.');d.categoryId=args.categoryId;}
       if(args.preparedAt!==undefined)d.preparedAt=validDate(args.preparedAt,now);
       if(args.people!==undefined)d.people=people(args.people);
       if(args.comments!==undefined)d.comments=optionalText(args.comments,1000);
       if(args.emoji!==undefined){if(!validIcon(args.emoji))fail('Choisissez une illustration proposée.');d.emoji=args.emoji;}
     } else if (action === 'meal.undo') {
-      var taken = s.events.find(function(e) { return e.id === args.eventId && e.action === 'meal.take'; });
+      var taken = eventsOf(s).find(function(e) { return e.id === args.eventId && e.action === 'meal.take'; });
       if (!taken) fail('Cette prise ne peut pas être annulée avec ce compte.');
-      if (s.events.some(function(e) { return e.action === 'meal.undo' && e.data.eventId === taken.id; })) fail('Cette prise a déjà été annulée.');
+      if (eventsOf(s).some(function(e) { return e.action === 'meal.undo' && e.data.eventId === taken.id; })) fail('Cette prise a déjà été annulée.');
       if (new Date(now).getTime()-new Date(taken.at).getTime()>24*3600000) fail('L’annulation est possible pendant 24 heures.');
       var undoMeal = s.meals.find(function(m) { return m.id === taken.data.id; });
       if (!undoMeal || !s.locations.some(function(l) { return l.id === undoMeal.locationId; })) fail('Cet emplacement a été supprimé. Replacez ce plat dans un emplacement avant d’annuler.');
@@ -144,5 +184,5 @@ var MiamCore = (function () {
     return result;
   }
   function unreadSuggestions(s,actor){return actor==='EK'?s.suggestions.filter(function(item){return item.author!==actor&&item.seenBy.indexOf(actor)<0;}):[];}
-  return {iconIndex:iconIndex,allowedUnits:allowedUnits,illustrations:ILLUSTRATIONS,unit:unit,unreadSuggestions:unreadSuggestions,profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
+  return {categoryId:categoryId,categoryName:categoryName,eventsOf:eventsOf,groups:groups,iconIndex:iconIndex,allowedUnits:allowedUnits,illustrations:ILLUSTRATIONS,unit:unit,unreadSuggestions:unreadSuggestions,profiles:PROFILES,profile:profile,isLow:isLow,empty:empty,replay:replay,command:command,parseVoice:parseVoice,norm:norm};
 })();

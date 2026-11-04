@@ -27,7 +27,7 @@ La section **Vos idées** permet aux trois profils de déposer une suggestion et
 
 ## Aide
 
-La section **Aide** explique l’ajout et la prise en quatre étapes chacun, avec deux GIF illustrés déclenchés volontairement et arrêtables. Les explications écrites restent disponibles sans animation. Les exemples sont fictifs et ne créent aucune donnée dans le stock. Les GIF sont intégrés au client Google, sans hébergeur d’images externe.
+Neuf guides illustrés et animés expliquent : ranger plusieurs produits, prendre une quantité, modifier un produit, gérer les emplacements, gérer les catégories, déplacer du stock, préparer les courses, vérifier un inventaire et utiliser le mode hors connexion. Les GIF se lancent volontairement et peuvent être arrêtés. Les exemples ne créent aucun stock.
 
 ## Illustrations et dictée
 
@@ -75,3 +75,13 @@ La catégorie Viande accepte les pièces, paquets, grammes et kilos pour la vian
 Après une première ouverture avec Internet et connexion au stock partagé, l’application GitHub conserve son interface dans le service worker et le dernier stock dans IndexedDB. Les actions sont écrites durablement avant l’envoi, avec leur auteur et leur identifiant stable. Elles survivent au rechargement et sont envoyées dans l’ordre au retour du réseau, lorsque l’application est ouverte ou à sa prochaine ouverture. Le serveur Google valide chaque opération et reste la source du stock partagé.
 
 Un retour perdu n’entraîne pas de double retrait. Un conflit (stock insuffisant, correction concurrente, emplacement occupé) bloque la suite et s’affiche explicitement. Les envois rejetés peuvent être réessayés ou retirés après vérification. Un envoi sans réponse ne peut pas être supprimé arbitrairement, car il peut avoir déjà été reçu. Le stock hors ligne est le dernier connu de cet appareil, pas un stock partagé en temps réel. Ne pas effacer les données du navigateur avant synchronisation. La dictée peut nécessiter Internet ; le clavier reste disponible. La page Google de secours nécessite Internet.
+
+## Version famille 7 — 4 novembre 2026
+
+Accueil propose **Je range**, **Je prends** et **Je regarde le stock**. Le **Menu** réunit les catégories, emplacements, courses, inventaire, historique et suggestions. Les ajouts groupés acceptent dix lignes maximum ; une ligne invalide annule toute la série. Le détail regroupe les lots par produit et emplacement et conserve leurs dates.
+
+Les catégories sont modifiables. Une suppression demande un reclassement si des produits y sont rattachés. Un emplacement occupé peut être supprimé après choix du rangement de destination. Un déplacement partiel conserve la quantité totale et la date du lot. La liste de courses est partagée ; la cocher ne modifie pas le stock. L’inventaire vérifie la quantité attendue pour éviter d’écraser une prise concurrente.
+
+**Les nouveautés** apparaissent à la prochaine ouverture pour chaque profil sur chaque appareil, jusqu’à confirmation. **Revoir les nouveautés** les rouvre. Le mode hors connexion conserve les actions et espace les tentatives après une erreur réseau. Le bouton de reprise permet une nouvelle tentative explicite.
+
+Le client a été récupéré depuis la version Google déjà déployée. La publication GitHub conserve la même URL Google et ne modifie aucune donnée familiale. Le contrôle automatisé utilise un stock fictif isolé.
