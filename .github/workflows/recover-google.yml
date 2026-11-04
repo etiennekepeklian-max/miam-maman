@@ -40,7 +40,7 @@ jobs:
         run: |
           git config user.name "Miam Maman recovery"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src dist google-apps-script tests README.md
+          git add src dist google-apps-script tests scripts README.md
           git diff --cached --quiet || git commit -m "Restore family v7 interface, guides and tested stock workflows"
           git push
       - name: Publier seulement apres reussite de tous les controles
@@ -53,3 +53,5 @@ jobs:
           gh workflow run pages.yml --ref main
 
 # Retry with correctly typed isolated HTML server.
+
+# Validate literal script embedding.
