@@ -5,11 +5,17 @@ on:
     paths: [.github/workflows/recover-google.yml]
 permissions:
   contents: write
+  actions: write
+concurrency:
+  group: miam-v7-recovery
+  cancel-in-progress: true
 jobs:
   recover:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -37,3 +43,11 @@ jobs:
           git add src dist google-apps-script tests README.md
           git diff --cached --quiet || git commit -m "Restore family v7 interface, guides and tested stock workflows"
           git push
+      - name: Publier seulement apres reussite de tous les controles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "52c1e56bfa1f46f231654aa9243f814069bb20f4"
+          git push origin HEAD:main
+          gh workflow run pages.yml --ref main
