@@ -1,4 +1,4 @@
-name: Recuperer la version Google
+name: Restaurer et verifier Miam Maman v7
 on:
   push:
     branches: [codex/recover-v7-20261104]
@@ -13,27 +13,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Lire uniquement le client Google public
-        env:
-          MIAM_URL: ${{ vars.MIAM_GOOGLE_WEBAPP_URL }}
+      - name: Restaurer le client Google sauvegarde
+        run: node scripts/recover-v7.mjs
+      - name: Verifier les regles de stock
+        run: npm test
+      - name: Construire un apercu de test isole
+        run: npm run build
+      - name: Installer le navigateur de test distant
         run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs/promises';
-          const url=process.env.MIAM_URL;
-          if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url||''))throw Error('URL Google absente');
-          const response=await fetch(url);
-          if(!response.ok)throw Error('Google HTTP '+response.status);
-          const html=await response.text();
-          await fs.mkdir('recovery',{recursive:true});
-          await fs.writeFile('recovery/google-response.html',html);
-          console.log('HTTP',response.status,'bytes',Buffer.byteLength(html));
-          console.log('IFRAMES',html.match(/<iframe[^>]+>/g));
-          console.log('TAIL',html.slice(-4000).replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g,'[image]'));
-          NODE
-      - name: Conserver le client sur la branche de reprise
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Tester mobile et bureau sans toucher au stock familial
+        run: node scripts/ui-smoke.mjs
+      - name: Construire la version partagee
+        env:
+          MIAM_REQUIRE_SHARED_BACKEND: '1'
+          MIAM_GOOGLE_WEBAPP_URL: ${{ vars.MIAM_GOOGLE_WEBAPP_URL }}
+        run: npm run build
+      - name: Conserver la version verifiee
         run: |
           git config user.name "Miam Maman recovery"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add recovery
-          git diff --cached --quiet || git commit -m "Recover published Google client without changing stock"
+          git add src dist google-apps-script tests README.md
+          git diff --cached --quiet || git commit -m "Restore family v7 interface, guides and tested stock workflows"
           git push
