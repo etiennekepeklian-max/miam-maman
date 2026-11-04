@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import assert from 'node:assert/strict';
-const server=http.createServer(async(req,res)=>{try{const file=req.url==='/'?'index.html':req.url.slice(1);res.end(await fs.readFile('dist/'+file));}catch{res.writeHead(404);res.end();}});
+const server=http.createServer(async(req,res)=>{try{const file=req.url==='/'?'index.html':req.url.slice(1);res.setHeader('Content-Type',file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.png')?'image/png':'application/javascript');res.end(await fs.readFile('dist/'+file));}catch{res.writeHead(404);res.end();}});
 await new Promise(r=>server.listen(4173,'127.0.0.1',r));
 const browser=await chromium.launch({headless:true});
 try{
@@ -10,7 +10,7 @@ try{
   const page=await browser.newPage({viewport:{width,height:844},reducedMotion:'reduce'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:4173/');
-  await page.locator('[data-profile="EK"]').click();
+  console.log('Page loaded',await page.title(),errors);await page.locator('[data-profile="EK"]').click();
   await page.locator('#releaseTitle').waitFor();
   await page.locator('#acknowledgeRelease').click();
   assert.equal(await page.locator('[data-intent]').count(),3);
